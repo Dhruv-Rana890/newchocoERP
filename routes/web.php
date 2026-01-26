@@ -38,6 +38,9 @@ use App\Http\Controllers\InstallController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\PrinterController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\RawMaterialController;
+use App\Http\Controllers\ColdStorageController;
+use App\Http\Controllers\BasementController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\AccountsController;
 use App\Http\Controllers\CategoryController;
@@ -208,6 +211,33 @@ Route::group(['middleware' => ['common', 'auth', 'active']], function() {
         Route::get('products/show-all-product-online', 'showAllProductOnline')->name('product.showAllProductOnline');
         Route::get('check-batch-availability/{product_id}/{batch_no}/{warehouse_id}', 'checkBatchAvailability');
         Route::get('product-price/{id}', 'getProductPrice');
+     });
+
+    // Raw Materials Routes
+    Route::resource('rawmaterials',RawMaterialController::class)->except([ 'show']);
+    Route::controller(RawMaterialController::class)->group(function () {
+        Route::post('rawmaterials/rawmaterial-data', 'rawMaterialData')->name('rawmaterials.rawmaterial-data');
+        Route::get('rawmaterials/gencode', 'generateCode')->name('rawmaterial.gencode');
+        Route::post('rawmaterials/deletebyselection', 'deleteBySelection')->name('rawmaterials.deletebyselection');
+        Route::post('rawmaterials/update', 'update')->name('rawmaterials.update');
+     });
+
+    // Cold Storages Routes
+    Route::resource('coldstorages',ColdStorageController::class)->except([ 'show']);
+    Route::controller(ColdStorageController::class)->group(function () {
+        Route::post('coldstorages/coldstorage-data', 'coldStorageData')->name('coldstorages.coldstorage-data');
+        Route::get('coldstorages/gencode', 'generateCode')->name('coldstorage.gencode');
+        Route::post('coldstorages/deletebyselection', 'deleteBySelection')->name('coldstorages.deletebyselection');
+        Route::post('coldstorages/update', 'update')->name('coldstorages.update');
+     });
+
+    // Basements Routes
+    Route::resource('basements',BasementController::class)->except([ 'show']);
+    Route::controller(BasementController::class)->group(function () {
+        Route::post('basements/basement-data', 'basementData')->name('basements.basement-data');
+        Route::get('basements/gencode', 'generateCode')->name('basement.gencode');
+        Route::post('basements/deletebyselection', 'deleteBySelection')->name('basements.deletebyselection');
+        Route::post('basements/update', 'update')->name('basements.update');
      });
 
 

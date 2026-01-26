@@ -993,6 +993,66 @@ class TenantDatabaseSeeder extends Seeder
                     'name' => 'sale-agents',
                     'guard_name' => 'web',
                 ],
+                [
+                    'id' => 182,
+                    'name' => 'rawmaterials-index',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 183,
+                    'name' => 'rawmaterials-add',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 184,
+                    'name' => 'rawmaterials-edit',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 185,
+                    'name' => 'rawmaterials-delete',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 186,
+                    'name' => 'coldstorages-index',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 187,
+                    'name' => 'coldstorages-add',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 188,
+                    'name' => 'coldstorages-edit',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 189,
+                    'name' => 'coldstorages-delete',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 190,
+                    'name' => 'basements-index',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 191,
+                    'name' => 'basements-add',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 192,
+                    'name' => 'basements-edit',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 193,
+                    'name' => 'basements-delete',
+                    'guard_name' => 'web',
+                ],
         ];
 
         $insertData = [];

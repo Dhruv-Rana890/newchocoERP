@@ -43,6 +43,60 @@
                 </li>
             @endcan
 
+            @can('sidebar_product')
+                <li>
+                    <a href="#rawmaterial" aria-expanded="false" data-toggle="collapse"> <i
+                            class="dripicons-box"></i><span>{{ __('db.Raw Material') }}</span><span></a>
+
+                    <ul id="rawmaterial" class="collapse list-unstyled ">
+                        @can('rawmaterials-index')
+                            <li id="rawmaterial-list-menu"><a href="{{ route('rawmaterials.index') }}">{{ __('db.Raw Material List') }}</a>
+                            </li>
+                        @endcan
+                        @can('rawmaterials-add')
+                            <li id="rawmaterial-create-menu"><a
+                                    href="{{ route('rawmaterials.create') }}">{{ __('db.add_raw_material') }}</a></li>
+                        @endcan
+                    </ul>
+                </li>
+            @endcan
+
+            @can('sidebar_product')
+                <li>
+                    <a href="#coldstorage" aria-expanded="false" data-toggle="collapse"> <i
+                            class="dripicons-archive"></i><span>{{ __('db.Cold Storage') }}</span><span></a>
+
+                    <ul id="coldstorage" class="collapse list-unstyled ">
+                        @can('coldstorages-index')
+                            <li id="coldstorage-list-menu"><a href="{{ route('coldstorages.index') }}">{{ __('db.Cold Storage List') }}</a>
+                            </li>
+                        @endcan
+                        @can('coldstorages-add')
+                            <li id="coldstorage-create-menu"><a
+                                    href="{{ route('coldstorages.create') }}">{{ __('db.add_cold_storage') }}</a></li>
+                        @endcan
+                    </ul>
+                </li>
+            @endcan
+
+            @can('sidebar_product')
+                <li>
+                    <a href="#basement" aria-expanded="false" data-toggle="collapse"> <i
+                            class="dripicons-box"></i><span>{{ __('db.Basement') }}</span><span></a>
+
+                    <ul id="basement" class="collapse list-unstyled ">
+                        @can('basements-index')
+                            <li id="basement-list-menu"><a href="{{ route('basements.index') }}">{{ __('db.Basement List') }}</a>
+                            </li>
+                        @endcan
+                        @can('basements-add')
+                            <li id="basement-create-menu"><a
+                                    href="{{ route('basements.create') }}">{{ __('db.add_basement') }}</a></li>
+                        @endcan
+                    </ul>
+                </li>
+            @endcan
+
             @can('sidebar_purchase')
                 <li>
                     <a href="#purchase" aria-expanded="false" data-toggle="collapse"> <i

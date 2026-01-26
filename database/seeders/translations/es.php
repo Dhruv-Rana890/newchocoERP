@@ -8509,4 +8509,106 @@ return array (
     'key' => 'Served By',
     'value' => 'Served By',
   ),
+  1418 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Raw Material',
+    'value' => 'Materia Prima',
+  ),
+  1419 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Raw Material List',
+    'value' => 'Lista de Materias Primas',
+  ),
+  1420 => 
+  array (
+    'locale' => 'es',
+    'key' => 'add_raw_material',
+    'value' => 'Agregar Materia Prima',
+  ),
+  1421 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Update Raw Material',
+    'value' => 'Actualizar Materia Prima',
+  ),
+  1422 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Filter Raw Materials',
+    'value' => 'Filtrar Materias Primas',
+  ),
+  1423 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Cold Storage',
+    'value' => 'Almacenamiento en Frío',
+  ),
+  1424 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Cold Storage List',
+    'value' => 'Lista de Almacenamiento en Frío',
+  ),
+  1425 => 
+  array (
+    'locale' => 'es',
+    'key' => 'add_cold_storage',
+    'value' => 'Agregar Almacenamiento en Frío',
+  ),
+  1426 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Update Cold Storage',
+    'value' => 'Actualizar Almacenamiento en Frío',
+  ),
+  1427 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Filter Cold Storages',
+    'value' => 'Filtrar Almacenamiento en Frío',
+  ),
+  1428 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Cold Storage Name',
+    'value' => 'Nombre de Almacenamiento en Frío',
+  ),
+  1429 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Basement',
+    'value' => 'Sótano',
+  ),
+  1430 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Basement List',
+    'value' => 'Lista de Sótanos',
+  ),
+  1431 => 
+  array (
+    'locale' => 'es',
+    'key' => 'add_basement',
+    'value' => 'Agregar Sótano',
+  ),
+  1432 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Update Basement',
+    'value' => 'Actualizar Sótano',
+  ),
+  1433 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Filter Basements',
+    'value' => 'Filtrar Sótanos',
+  ),
+  1434 => 
+  array (
+    'locale' => 'es',
+    'key' => 'Basement Name',
+    'value' => 'Nombre del Sótano',
+  ),
 );

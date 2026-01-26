@@ -52,10 +52,14 @@ class TranslationsTableSeeder extends Seeder
 
         // Step 3: Insert new records in chunks
         if (!empty($insertData)) {
+            $this->command->info('Found ' . count($insertData) . ' new translations to insert.');
             $chunks = collect($insertData)->chunk(1000);
             foreach ($chunks as $chunk) {
                 DB::table('translations')->insert($chunk->toArray());
             }
+            $this->command->info('Successfully inserted ' . count($insertData) . ' translations.');
+        } else {
+            $this->command->info('No new translations found. All translations already exist in database.');
         }
 
     }

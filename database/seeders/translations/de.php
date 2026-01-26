@@ -8509,4 +8509,106 @@ return array (
     'key' => 'Served By',
     'value' => 'Served By',
   ),
+  1418 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Raw Material',
+    'value' => 'Rohstoff',
+  ),
+  1419 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Raw Material List',
+    'value' => 'Rohstoffliste',
+  ),
+  1420 => 
+  array (
+    'locale' => 'de',
+    'key' => 'add_raw_material',
+    'value' => 'Rohstoff Hinzufügen',
+  ),
+  1421 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Update Raw Material',
+    'value' => 'Rohstoff Aktualisieren',
+  ),
+  1422 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Filter Raw Materials',
+    'value' => 'Rohstoffe Filtern',
+  ),
+  1423 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Cold Storage',
+    'value' => 'Kühllager',
+  ),
+  1424 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Cold Storage List',
+    'value' => 'Kühllagerliste',
+  ),
+  1425 => 
+  array (
+    'locale' => 'de',
+    'key' => 'add_cold_storage',
+    'value' => 'Kühllager Hinzufügen',
+  ),
+  1426 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Update Cold Storage',
+    'value' => 'Kühllager Aktualisieren',
+  ),
+  1427 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Filter Cold Storages',
+    'value' => 'Kühllager Filtern',
+  ),
+  1428 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Cold Storage Name',
+    'value' => 'Kühllager Name',
+  ),
+  1429 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Basement',
+    'value' => 'Keller',
+  ),
+  1430 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Basement List',
+    'value' => 'Kellerliste',
+  ),
+  1431 => 
+  array (
+    'locale' => 'de',
+    'key' => 'add_basement',
+    'value' => 'Keller hinzufügen',
+  ),
+  1432 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Update Basement',
+    'value' => 'Keller aktualisieren',
+  ),
+  1433 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Filter Basements',
+    'value' => 'Keller filtern',
+  ),
+  1434 => 
+  array (
+    'locale' => 'de',
+    'key' => 'Basement Name',
+    'value' => 'Keller Name',
+  ),
 );

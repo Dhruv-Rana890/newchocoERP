@@ -9905,4 +9905,106 @@ return array(
         'key' => 'Show Sale Note',
         'value' => 'Show Sale Note',
     ),
+    1675 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Raw Material',
+        'value' => 'Raw Material',
+    ),
+    1676 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Raw Material List',
+        'value' => 'Raw Material List',
+    ),
+    1677 =>
+    array(
+        'locale' => 'en',
+        'key' => 'add_raw_material',
+        'value' => 'Add Raw Material',
+    ),
+    1678 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Update Raw Material',
+        'value' => 'Update Raw Material',
+    ),
+    1679 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Filter Raw Materials',
+        'value' => 'Filter Raw Materials',
+    ),
+    1680 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Cold Storage',
+        'value' => 'Cold Storage',
+    ),
+    1681 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Cold Storage List',
+        'value' => 'Cold Storage List',
+    ),
+    1682 =>
+    array(
+        'locale' => 'en',
+        'key' => 'add_cold_storage',
+        'value' => 'Add Cold Storage',
+    ),
+    1683 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Update Cold Storage',
+        'value' => 'Update Cold Storage',
+    ),
+    1684 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Filter Cold Storages',
+        'value' => 'Filter Cold Storages',
+    ),
+    1685 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Cold Storage Name',
+        'value' => 'Cold Storage Name',
+    ),
+    1686 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Basement',
+        'value' => 'Basement',
+    ),
+    1687 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Basement List',
+        'value' => 'Basement List',
+    ),
+    1688 =>
+    array(
+        'locale' => 'en',
+        'key' => 'add_basement',
+        'value' => 'Add Basement',
+    ),
+    1689 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Update Basement',
+        'value' => 'Update Basement',
+    ),
+    1690 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Filter Basements',
+        'value' => 'Filter Basements',
+    ),
+    1691 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Basement Name',
+        'value' => 'Basement Name',
+    ),
 );

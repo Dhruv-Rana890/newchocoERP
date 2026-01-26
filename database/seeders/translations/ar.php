@@ -8515,4 +8515,106 @@ return array (
     'key' => 'Served By',
     'value' => 'Served By',
   ),
+  1419 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Raw Material',
+    'value' => 'مادة خام',
+  ),
+  1420 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Raw Material List',
+    'value' => 'قائمة المواد الخام',
+  ),
+  1421 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'add_raw_material',
+    'value' => 'إضافة مادة خام',
+  ),
+  1422 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Update Raw Material',
+    'value' => 'تحديث مادة خام',
+  ),
+  1423 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Filter Raw Materials',
+    'value' => 'تصفية المواد الخام',
+  ),
+  1424 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Cold Storage',
+    'value' => 'تخزين بارد',
+  ),
+  1425 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Cold Storage List',
+    'value' => 'قائمة التخزين البارد',
+  ),
+  1426 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'add_cold_storage',
+    'value' => 'إضافة تخزين بارد',
+  ),
+  1427 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Update Cold Storage',
+    'value' => 'تحديث تخزين بارد',
+  ),
+  1428 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Filter Cold Storages',
+    'value' => 'تصفية التخزين البارد',
+  ),
+  1429 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Cold Storage Name',
+    'value' => 'اسم التخزين البارد',
+  ),
+  1430 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Basement',
+    'value' => 'قبو',
+  ),
+  1431 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Basement List',
+    'value' => 'قائمة الأقبية',
+  ),
+  1432 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'add_basement',
+    'value' => 'إضافة قبو',
+  ),
+  1433 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Update Basement',
+    'value' => 'تحديث قبو',
+  ),
+  1434 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Filter Basements',
+    'value' => 'تصفية الأقبية',
+  ),
+  1435 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Basement Name',
+    'value' => 'اسم القبو',
+  ),
 );

@@ -8509,4 +8509,106 @@ return array (
     'key' => 'Served By',
     'value' => 'Served By',
   ),
+  1418 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Raw Material',
+    'value' => 'Matière Première',
+  ),
+  1419 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Raw Material List',
+    'value' => 'Liste des Matières Premières',
+  ),
+  1420 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'add_raw_material',
+    'value' => 'Ajouter Matière Première',
+  ),
+  1421 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Update Raw Material',
+    'value' => 'Mettre à Jour Matière Première',
+  ),
+  1422 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Filter Raw Materials',
+    'value' => 'Filtrer les Matières Premières',
+  ),
+  1423 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Cold Storage',
+    'value' => 'Stockage à Froid',
+  ),
+  1424 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Cold Storage List',
+    'value' => 'Liste des Stockages à Froid',
+  ),
+  1425 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'add_cold_storage',
+    'value' => 'Ajouter Stockage à Froid',
+  ),
+  1426 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Update Cold Storage',
+    'value' => 'Mettre à Jour Stockage à Froid',
+  ),
+  1427 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Filter Cold Storages',
+    'value' => 'Filtrer les Stockages à Froid',
+  ),
+  1428 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Cold Storage Name',
+    'value' => 'Nom du Stockage à Froid',
+  ),
+  1429 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Basement',
+    'value' => 'Sous-sol',
+  ),
+  1430 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Basement List',
+    'value' => 'Liste des Sous-sols',
+  ),
+  1431 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'add_basement',
+    'value' => 'Ajouter un Sous-sol',
+  ),
+  1432 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Update Basement',
+    'value' => 'Mettre à jour le Sous-sol',
+  ),
+  1433 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Filter Basements',
+    'value' => 'Filtrer les Sous-sols',
+  ),
+  1434 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Basement Name',
+    'value' => 'Nom du Sous-sol',
+  ),
 );
