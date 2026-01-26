@@ -76,6 +76,12 @@
                                 </div>
                             </div>
                             <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>{{__('db.Mobile Number 2')}}</label>
+                                    <input type="text" name="mobile_number_2" value="{{$lims_customer_data->mobile_number_2 ?? ''}}" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
                                 <div class="country-phone-group form-group">
                                     <label>{{__('db.WhatsApp Number')}}</label>
                                     <div class="d-flex">
@@ -96,6 +102,36 @@
                                 <div class="form-group">
                                     <label>{{__('db.Address')}}</label>
                                     <input type="text" name="address" value="{{$lims_customer_data->address}}" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>{{__('db.Area')}}</label>
+                                    <input type="text" name="area" value="{{$lims_customer_data->area ?? ''}}" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>{{__('db.House Number')}}</label>
+                                    <input type="text" name="house_number" value="{{$lims_customer_data->house_number ?? ''}}" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>{{__('db.Street')}}</label>
+                                    <input type="text" name="street" value="{{$lims_customer_data->street ?? ''}}" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>{{__('db.Ave')}}</label>
+                                    <input type="text" name="ave" value="{{$lims_customer_data->ave ?? ''}}" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>{{__('db.Block')}}</label>
+                                    <input type="text" name="block" value="{{$lims_customer_data->block ?? ''}}" class="form-control">
                                 </div>
                             </div>
                             <div class="col-md-4">

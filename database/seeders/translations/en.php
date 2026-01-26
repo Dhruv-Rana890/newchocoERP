@@ -10073,4 +10073,46 @@ return array(
         'key' => 'Receiver Number',
         'value' => 'Receiver Number',
     ),
+    1703 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Mobile Number 2',
+        'value' => 'Mobile Number 2',
+    ),
+    1704 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Area',
+        'value' => 'Area',
+    ),
+    1705 =>
+    array(
+        'locale' => 'en',
+        'key' => 'House Number',
+        'value' => 'House Number',
+    ),
+    1706 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Street',
+        'value' => 'Street',
+    ),
+    1707 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Ave',
+        'value' => 'Ave',
+    ),
+    1708 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Block',
+        'value' => 'Block',
+    ),
+    1709 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Customer Type',
+        'value' => 'Customer Type',
+    ),
 );

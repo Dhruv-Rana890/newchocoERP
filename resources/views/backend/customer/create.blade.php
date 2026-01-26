@@ -79,6 +79,12 @@
                                 </div>
                             </div>
                             <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>{{__('db.Mobile Number 2')}}</label>
+                                    <input type="text" name="mobile_number_2" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
                                 <div class="country-phone-group form-group">
                                     <label>{{__('db.WhatsApp Number')}} <span class="asterisk">*</span></label>
                                     <div class="d-flex">
@@ -91,6 +97,16 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group">
+                                    <label>{{ __('db.Customer Type') }}</label>
+                                    <select name="type" class="form-control selectpicker">
+                                        @foreach(\App\Enums\CustomerTypeEnum::cases() as $case)
+                                            <option value="{{ $case->value }}">{{ $case->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
                                     <label>{{__('db.Tax Number')}}</label>
                                     <input type="text" name="tax_no" class="form-control">
                                 </div>
@@ -99,6 +115,36 @@
                                 <div class="form-group">
                                     <label>{{__('db.Address')}} </label>
                                     <input type="text" name="address" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>{{__('db.Area')}}</label>
+                                    <input type="text" name="area" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>{{__('db.House Number')}}</label>
+                                    <input type="text" name="house_number" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>{{__('db.Street')}}</label>
+                                    <input type="text" name="street" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>{{__('db.Ave')}}</label>
+                                    <input type="text" name="ave" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>{{__('db.Block')}}</label>
+                                    <input type="text" name="block" class="form-control">
                                 </div>
                             </div>
                             <div class="col-md-4">

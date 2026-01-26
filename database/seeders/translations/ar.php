@@ -8683,4 +8683,46 @@ return array (
     'key' => 'Receiver Number',
     'value' => 'رقم المستلم',
   ),
+  1447 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Mobile Number 2',
+    'value' => 'رقم الجوال 2',
+  ),
+  1448 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Area',
+    'value' => 'المنطقة',
+  ),
+  1449 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'House Number',
+    'value' => 'رقم المنزل',
+  ),
+  1450 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Street',
+    'value' => 'الشارع',
+  ),
+  1451 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Ave',
+    'value' => 'الجادة',
+  ),
+  1452 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Block',
+    'value' => 'الكتلة',
+  ),
+  1453 => 
+  array (
+    'locale' => 'ar',
+    'key' => 'Customer Type',
+    'value' => 'نوع العميل',
+  ),
 );

@@ -8677,4 +8677,46 @@ return array (
     'key' => 'Receiver Number',
     'value' => 'Numéro du Destinataire',
   ),
+  1446 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Mobile Number 2',
+    'value' => 'Numéro Mobile 2',
+  ),
+  1447 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Area',
+    'value' => 'Zone',
+  ),
+  1448 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'House Number',
+    'value' => 'Numéro de Maison',
+  ),
+  1449 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Street',
+    'value' => 'Rue',
+  ),
+  1450 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Ave',
+    'value' => 'Avenue',
+  ),
+  1451 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Block',
+    'value' => 'Bloc',
+  ),
+  1452 => 
+  array (
+    'locale' => 'fr',
+    'key' => 'Customer Type',
+    'value' => 'Type de Client',
+  ),
 );

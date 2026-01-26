@@ -8,7 +8,7 @@ class Customer extends Model
 {
     protected $fillable =[
         "customer_group_id", "user_id", "name", "company_name",
-        "email", "type", "phone_number", "wa_number", "tax_no", "address", "city",
+        "email", "type", "phone_number", "mobile_number_2", "wa_number", "tax_no", "address", "area", "house_number", "street", "ave", "block", "city",
         "state", "postal_code", "country", "opening_balance", "credit_limit", "points", "deposit", "pay_term_no","pay_term_period", "expense", "wishlist", "is_active"
     ];
 
