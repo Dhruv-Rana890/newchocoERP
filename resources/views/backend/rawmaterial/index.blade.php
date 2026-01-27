@@ -104,16 +104,13 @@
                 <thead>
                     <tr>
                         <th class="not-exported"></th>
+                        <th>{{ __('db.Image') }}</th>
                         <th>{{ __('db.name') }}</th>
                         <th>{{ __('db.Code') }}</th>
-                        <th>{{ __('db.Brand') }}</th>
                         <th>{{ __('db.category') }}</th>
                         <th>{{ __('db.Quantity') }}</th>
                         <th>{{ __('db.Unit') }}</th>
-                        <th>{{ __('db.Price') }}</th>
-                        @if ($role_id <= 2)
-                            <th>{{ __('db.Cost') }}</th>
-                        @endif
+                        <th>{{ __('db.Cost') }}</th>
                         <th class="not-exported">{{ __('db.action') }}</th>
                     </tr>
                 </thead>
@@ -139,11 +136,12 @@
         var columns = [{
             "data": "key"
         }, {
+            "data": "image",
+            "orderable": false
+        }, {
             "data": "name"
         }, {
             "data": "code"
-        }, {
-            "data": "brand"
         }, {
             "data": "category"
         }, {
@@ -151,16 +149,11 @@
         }, {
             "data": "unit"
         }, {
-            "data": "price"
+            "data": "cost"
+        }, {
+            "data": "options",
+            "orderable": false
         }];
-        if (role_id <= 2) {
-            columns.push({
-                "data": "cost"
-            });
-        }
-        columns.push({
-            "data": "options"
-        });
 
         var all_permission = <?php echo json_encode($all_permission); ?>;
         var user_verified = <?php echo json_encode(env('USER_VERIFIED')); ?>;
@@ -212,7 +205,7 @@
                 columns: columns,
                 columnDefs: [{
                     orderable: false,
-                    targets: [0, columns.length - 1]
+                    targets: [0, 1, columns.length - 1]
                 }, {
                     render: function(data, type, row, meta) {
                         if (type === 'display') {
@@ -232,7 +225,7 @@
                     style: 'multi',
                     selector: 'td:first-child'
                 },
-                order: [['1', 'asc']],
+                order: [['2', 'asc']],
                 lengthMenu: [
                     [10, 25, 50, -1],
                     [10, 25, 50, "All"]

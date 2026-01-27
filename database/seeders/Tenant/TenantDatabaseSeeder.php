@@ -113,13 +113,18 @@ class TenantDatabaseSeeder extends Seeder
 
         ///permissions table data insert start///
         $existing_permissions = DB::table('permissions')
-        ->select('name', 'guard_name')
+        ->select('id', 'name', 'guard_name')
         ->get();
 
         $existingMap = [];
+        $existingIdMap = [];
 
         foreach ($existing_permissions as $item) {
             $existingMap[$item->name . '|' . $item->guard_name] = true;
+            $existingIdMap[$item->id] = [
+                'name' => $item->name,
+                'guard_name' => $item->guard_name
+            ];
         }
 
         $permission_data = [
@@ -1035,40 +1040,84 @@ class TenantDatabaseSeeder extends Seeder
                 ],
                 [
                     'id' => 190,
-                    'name' => 'basements-index',
+                    'name' => 'warehouse-stores-index',
                     'guard_name' => 'web',
                 ],
                 [
                     'id' => 191,
-                    'name' => 'basements-add',
+                    'name' => 'warehouse-stores-add',
                     'guard_name' => 'web',
                 ],
                 [
                     'id' => 192,
-                    'name' => 'basements-edit',
+                    'name' => 'warehouse-stores-edit',
                     'guard_name' => 'web',
                 ],
                 [
                     'id' => 193,
-                    'name' => 'basements-delete',
+                    'name' => 'warehouse-stores-delete',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 194,
+                    'name' => 'raw-purchases-index',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 195,
+                    'name' => 'raw-purchases-add',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 196,
+                    'name' => 'raw-purchases-edit',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 197,
+                    'name' => 'raw-purchases-delete',
                     'guard_name' => 'web',
                 ],
         ];
 
         $insertData = [];
+        $updateData = [];
 
         foreach ($permission_data as $row) {
             $lookupKey = $row['name'] . '|' . $row['guard_name'];
 
+            // Check if permission with same name exists
             if (!isset($existingMap[$lookupKey])) {
-                $insertData[] = [
-                    'id' => $row['id'],
-                    'name' => $row['name'],
-                    'guard_name' => $row['guard_name']
-                ];
+                // Check if permission with same ID exists but different name (needs update)
+                if (isset($existingIdMap[$row['id']])) {
+                    // Update existing permission with new name
+                    $updateData[] = [
+                        'id' => $row['id'],
+                        'name' => $row['name'],
+                        'guard_name' => $row['guard_name']
+                    ];
+                } else {
+                    // New permission to insert
+                    $insertData[] = [
+                        'id' => $row['id'],
+                        'name' => $row['name'],
+                        'guard_name' => $row['guard_name']
+                    ];
+                }
             }
         }
 
+        // Update existing permissions with new names
+        foreach ($updateData as $update) {
+            DB::table('permissions')
+                ->where('id', $update['id'])
+                ->update([
+                    'name' => $update['name'],
+                    'guard_name' => $update['guard_name']
+                ]);
+        }
+
+        // Insert new permissions
         if (!empty($insertData)) {
             DB::table('permissions')->insert($insertData);
         }

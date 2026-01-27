@@ -57,6 +57,14 @@
                             <li id="rawmaterial-create-menu"><a
                                     href="{{ route('rawmaterials.create') }}">{{ __('db.add_raw_material') }}</a></li>
                         @endcan
+                        @can('raw-purchases-index')
+                            <li id="raw-purchase-list-menu"><a
+                                    href="{{ route('raw-purchases.index') }}">{{ __('db.Raw Purchase List') }}</a></li>
+                        @endcan
+                        @can('raw-purchases-add')
+                            <li id="raw-purchase-create-menu"><a
+                                    href="{{ route('raw-purchases.create') }}">{{ __('db.Add Raw Purchase') }}</a></li>
+                        @endcan
                     </ul>
                 </li>
             @endcan
@@ -79,19 +87,19 @@
                 </li>
             @endcan
 
-            @can('sidebar_product')
+            @can('warehouse-stores-index')
                 <li>
                     <a href="#basement" aria-expanded="false" data-toggle="collapse"> <i
-                            class="dripicons-box"></i><span>{{ __('db.Basement') }}</span><span></a>
+                            class="dripicons-box"></i><span>{{ __('db.Warehouse Stores') }}</span><span></a>
 
                     <ul id="basement" class="collapse list-unstyled ">
-                        @can('basements-index')
-                            <li id="basement-list-menu"><a href="{{ route('basements.index') }}">{{ __('db.Basement List') }}</a>
+                        @can('warehouse-stores-index')
+                            <li id="basement-list-menu"><a href="{{ route('warehouse-stores.index') }}">{{ __('db.Warehouse Stores List') }}</a>
                             </li>
                         @endcan
-                        @can('basements-add')
+                        @can('warehouse-stores-add')
                             <li id="basement-create-menu"><a
-                                    href="{{ route('basements.create') }}">{{ __('db.add_basement') }}</a></li>
+                                    href="{{ route('warehouse-stores.create') }}">{{ __('db.add_warehouse_store') }}</a></li>
                         @endcan
                     </ul>
                 </li>
@@ -347,7 +355,7 @@
                 </li>
             @endcan
 
-            {{-- @if (in_array('manufacturing', explode(',', $general_setting->modules)))
+            @if (in_array('manufacturing', explode(',', $general_setting->modules)))
                 <li>
                     <a href="#manufacturing" aria-expanded="false" data-toggle="collapse"> <i class="fa fa-industry"></i><span>{{__('db.Manufacturing')}}</span></a>
 
@@ -357,7 +365,7 @@
                         <li id="production-create-menu"><a href="{{route('recipes.index')}}">{{__('db.Recipe')}}</a></li>
                     </ul>
                 </li>
-            @endif --}}
+            @endif
 
 
              @if (\Auth::user()->role_id <= 2)

@@ -9975,81 +9975,129 @@ return array(
     array(
         'locale' => 'en',
         'key' => 'Basement',
-        'value' => 'Basement',
+        'value' => 'Warehouse Stores',
     ),
     1687 =>
     array(
         'locale' => 'en',
         'key' => 'Basement List',
-        'value' => 'Basement List',
+        'value' => 'Warehouse Stores',
     ),
     1688 =>
     array(
         'locale' => 'en',
         'key' => 'add_basement',
-        'value' => 'Add Basement',
+        'value' => 'Add Warehouse Store',
     ),
     1689 =>
     array(
         'locale' => 'en',
         'key' => 'Update Basement',
-        'value' => 'Update Basement',
+        'value' => 'Update Warehouse Store',
     ),
     1690 =>
     array(
         'locale' => 'en',
         'key' => 'Filter Basements',
-        'value' => 'Filter Basements',
+        'value' => 'Filter Warehouse Stores',
     ),
     1691 =>
     array(
         'locale' => 'en',
         'key' => 'Basement Name',
-        'value' => 'Basement Name',
+        'value' => 'Warehouse Store Name',
     ),
     1692 =>
+    array(
+        'locale' => 'en',
+        'key' => 'add_warehouse_store',
+        'value' => 'Add Warehouse Store',
+    ),
+    1693 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Update Warehouse Store',
+        'value' => 'Update Warehouse Store',
+    ),
+    1694 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Filter Warehouse Stores',
+        'value' => 'Filter Warehouse Stores',
+    ),
+    1695 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Warehouse Store Name',
+        'value' => 'Warehouse Store Name',
+    ),
+    1696 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Warehouse Stores',
+        'value' => 'Warehouse Stores',
+    ),
+    1697 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Warehouse Stores List',
+        'value' => 'Warehouse Stores List',
+    ),
+    1698 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Raw Purchase List',
+        'value' => 'Raw Purchase List',
+    ),
+    1699 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Add Raw Purchase',
+        'value' => 'Add Raw Purchase',
+    ),
+    1700 =>
     array(
         'locale' => 'en',
         'key' => 'Greeting card',
         'value' => 'Greeting card',
     ),
-    1693 =>
+    1701 =>
     array(
         'locale' => 'en',
         'key' => 'Order Type',
         'value' => 'Order Type',
     ),
-    1694 =>
+    1702 =>
     array(
         'locale' => 'en',
         'key' => 'Select Order Type',
         'value' => 'Select Order Type',
     ),
-    1695 =>
+    1703 =>
     array(
         'locale' => 'en',
         'key' => 'Delivery Type',
         'value' => 'Delivery Type',
     ),
-    1696 =>
+    1704 =>
     array(
         'locale' => 'en',
         'key' => 'Select Delivery Type',
         'value' => 'Select Delivery Type',
     ),
-    1697 =>
+    1705 =>
     array(
         'locale' => 'en',
         'key' => 'Delivery Date',
         'value' => 'Delivery Date',
     ),
-    1698 =>
+    1706 =>
     array(
         'locale' => 'en',
         'key' => 'Delivery Time',
         'value' => 'Delivery Time',
     ),
-    1699 =>
+    1707 =>
     array(
         'locale' => 'en',
         'key' => 'Delivery Time2',
@@ -10120,5 +10168,23 @@ return array(
         'locale' => 'en',
         'key' => 'Edit Customer',
         'value' => 'Edit Customer',
+    ),
+    1711 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Warehouse Store deleted successfully',
+        'value' => 'Warehouse Store deleted successfully',
+    ),
+    1712 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Failed to create warehouse store. Please try again',
+        'value' => 'Failed to create warehouse store. Please try again',
+    ),
+    1713 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Failed to update warehouse store. Please try again',
+        'value' => 'Failed to update warehouse store. Please try again',
     ),
 );

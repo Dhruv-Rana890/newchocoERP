@@ -52,6 +52,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\GiftCardController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\RawPurchaseController;
 use App\Http\Controllers\RazorpayController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\TransferController;
@@ -231,13 +232,13 @@ Route::group(['middleware' => ['common', 'auth', 'active']], function() {
         Route::post('coldstorages/update', 'update')->name('coldstorages.update');
      });
 
-    // Basements Routes
-    Route::resource('basements',BasementController::class)->except([ 'show']);
+    // Warehouse Stores Routes
+    Route::resource('warehouse-stores',BasementController::class)->except([ 'show']);
     Route::controller(BasementController::class)->group(function () {
-        Route::post('basements/basement-data', 'basementData')->name('basements.basement-data');
-        Route::get('basements/gencode', 'generateCode')->name('basement.gencode');
-        Route::post('basements/deletebyselection', 'deleteBySelection')->name('basements.deletebyselection');
-        Route::post('basements/update', 'update')->name('basements.update');
+        Route::post('warehouse-stores/basement-data', 'basementData')->name('warehouse-stores.basement-data');
+        Route::get('warehouse-stores/gencode', 'generateCode')->name('warehouse-store.gencode');
+        Route::post('warehouse-stores/deletebyselection', 'deleteBySelection')->name('warehouse-stores.deletebyselection');
+        Route::post('warehouse-stores/update', 'update')->name('warehouse-stores.update');
      });
 
 
@@ -484,6 +485,21 @@ Route::group(['middleware' => ['common', 'auth', 'active']], function() {
         Route::post('importpurchase', 'importPurchase')->name('purchase.import');
     });
     Route::resource('purchases', PurchaseController::class);
+
+    // Raw Purchases Routes
+    Route::controller(RawPurchaseController::class)->group(function () {
+        Route::prefix('raw-purchases')->group(function () {
+            Route::post('purchase-data', 'purchaseData')->name('raw-purchases.data');
+            Route::get('raw-material-purchase/{id}', 'rawMaterialPurchaseData');
+            Route::get('lims_raw_material_search', 'limsRawMaterialSearch')->name('raw-material-purchase.search');
+            Route::post('add_payment', 'addPayment')->name('raw-purchase.add-payment');
+            Route::get('getpayment/{id}', 'getPayment')->name('raw-purchase.get-payment');
+            Route::post('updatepayment', 'updatePayment')->name('raw-purchase.update-payment');
+            Route::post('deletepayment', 'deletePayment')->name('raw-purchase.delete-payment');
+            Route::post('deletebyselection', 'deleteBySelection');
+        });
+    });
+    Route::resource('raw-purchases', RawPurchaseController::class);
 
 
 

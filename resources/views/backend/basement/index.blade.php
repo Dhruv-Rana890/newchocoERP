@@ -35,13 +35,13 @@
     <section>
         <div class="container-fluid">
 
-            @can('basements-add')
-                <a href="{{ route('basements.create') }}" class="btn btn-info add-basement-btn btn-icon"><i
-                        class="dripicons-plus"></i> {{ __('db.add_basement') }}</a>
+            @can('warehouse-stores-add')
+                <a href="{{ route('warehouse-stores.create') }}" class="btn btn-info add-basement-btn btn-icon"><i
+                        class="dripicons-plus"></i> {{ __('db.add_warehouse_store') }}</a>
             @endcan
 
             <button type="button" class="btn btn-warning btn-icon" id="toggle-filter">
-                <i class="dripicons-experiment"></i> {{ __('db.Filter Basements') }}
+                <i class="dripicons-experiment"></i> {{ __('db.Filter Warehouse Stores') }}
             </button>
 
             <div class="card mt-3 mb-2">
@@ -106,14 +106,10 @@
                         <th class="not-exported"></th>
                         <th>{{ __('db.name') }}</th>
                         <th>{{ __('db.Code') }}</th>
-                        <th>{{ __('db.Brand') }}</th>
                         <th>{{ __('db.category') }}</th>
                         <th>{{ __('db.Quantity') }}</th>
                         <th>{{ __('db.Unit') }}</th>
-                        <th>{{ __('db.Price') }}</th>
-                        @if ($role_id <= 2)
-                            <th>{{ __('db.Cost') }}</th>
-                        @endif
+                        <th>{{ __('db.Cost') }}</th>
                         <th class="not-exported">{{ __('db.action') }}</th>
                     </tr>
                 </thead>
@@ -143,24 +139,17 @@
         }, {
             "data": "code"
         }, {
-            "data": "brand"
-        }, {
             "data": "category"
         }, {
             "data": "qty"
         }, {
             "data": "unit"
         }, {
-            "data": "price"
+            "data": "cost"
+        }, {
+            "data": "options",
+            "orderable": false
         }];
-        if (role_id <= 2) {
-            columns.push({
-                "data": "cost"
-            });
-        }
-        columns.push({
-            "data": "options"
-        });
 
         var all_permission = <?php echo json_encode($all_permission); ?>;
         var user_verified = <?php echo json_encode(env('USER_VERIFIED')); ?>;
@@ -199,7 +188,7 @@
                 processing: true,
                 serverSide: true,
                 ajax: {
-                    url: "{{ route('basements.basement-data') }}",
+                    url: "{{ route('warehouse-stores.basement-data') }}",
                     data: function(d) {
                         d.all_permission = all_permission;
                         d.brand_id = $('#brand_id').val();

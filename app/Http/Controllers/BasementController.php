@@ -28,7 +28,7 @@ class BasementController extends Controller
     public function index(Request $request)
     {
         $role = Role::find(Auth::user()->role_id);
-        if ($role->hasPermissionTo('basements-index')) {
+        if ($role->hasPermissionTo('warehouse-stores-index')) {
             $lims_brand_list = Brand::where('is_active', true)->get();
             $lims_category_list = Category::where('is_active', true)->get();
             $lims_unit_list = Unit::where('is_active', true)->get();
@@ -62,12 +62,10 @@ class BasementController extends Controller
         $columns = [
             1 => 'name',
             2 => 'code',
-            3 => 'brand_id',
-            4 => 'category_id',
-            5 => 'qty',
-            6 => 'unit_id',
-            7 => 'price',
-            8 => 'cost',
+            3 => 'category_id',
+            4 => 'qty',
+            5 => 'unit_id',
+            6 => 'cost',
         ];
 
         $filtered_data = [
@@ -79,7 +77,8 @@ class BasementController extends Controller
 
         $limit = ($request->input('length') != -1) ? $request->input('length') : null;
         $start = $request->input('start');
-        $order = 'basements.' . $columns[$request->input('order.0.column')];
+        $orderColumn = $request->input('order.0.column');
+        $order = isset($columns[$orderColumn]) ? 'basements.' . $columns[$orderColumn] : 'basements.name';
         $dir   = $request->input('order.0.dir');
 
         $baseQuery = Basement::with('category', 'brand', 'unit')
@@ -117,14 +116,13 @@ class BasementController extends Controller
 
         $data = [];
         foreach ($basements as $basement) {
+            $nestedData['key'] = '';
             $nestedData['id'] = $basement->id;
             $nestedData['name'] = $basement->name;
             $nestedData['code'] = $basement->code;
-            $nestedData['brand'] = $basement->brand ? $basement->brand->title : 'N/A';
             $nestedData['category'] = $basement->category ? $basement->category->name : 'N/A';
             $nestedData['qty'] = $basement->qty ?? 0;
             $nestedData['unit'] = $basement->unit ? $basement->unit->unit_name : 'N/A';
-            $nestedData['price'] = $basement->price;
             $nestedData['cost'] = $basement->cost;
 
             $nestedData['options'] = '<div class="btn-group">
@@ -134,14 +132,14 @@ class BasementController extends Controller
                 </button>
                 <ul class="dropdown-menu edit-options dropdown-menu-right dropdown-default" user="menu">';
 
-            if (in_array("basements-edit", $request['all_permission']))
-                $nestedData['options'] .= \Form::open(["route" => ["basements.edit", $basement->id], "method" => "GET"]) . '
+            if (in_array("warehouse-stores-edit", $request['all_permission']))
+                $nestedData['options'] .= \Form::open(["route" => ["warehouse-stores.edit", $basement->id], "method" => "GET"]) . '
                     <li>
                         <button type="submit" class="btn btn-link"><i class="dripicons-document-edit"></i> ' . __("db.edit") . '</button>
                     </li>' . \Form::close();
 
-            if (in_array("basements-delete", $request['all_permission']))
-                $nestedData['options'] .= \Form::open(["route" => ["basements.destroy", $basement->id], "method" => "DELETE"]) . '
+            if (in_array("warehouse-stores-delete", $request['all_permission']))
+                $nestedData['options'] .= \Form::open(["route" => ["warehouse-stores.destroy", $basement->id], "method" => "DELETE"]) . '
                     <li>
                     <button type="submit" class="btn btn-link" onclick="return confirmDelete()"><i class="fa fa-trash"></i> ' . __("db.delete") . '</button>
                     </li>' . \Form::close() . '
@@ -162,7 +160,7 @@ class BasementController extends Controller
     public function create()
     {
         $role = Role::firstOrCreate(['id' => Auth::user()->role_id]);
-        if ($role->hasPermissionTo('basements-add')) {
+        if ($role->hasPermissionTo('warehouse-stores-add')) {
             $lims_brand_list = Brand::where('is_active', true)->get();
             $lims_category_list = Category::where('is_active', true)->get();
             $lims_unit_list = Unit::where('is_active', true)->get();
@@ -176,77 +174,111 @@ class BasementController extends Controller
 
     public function store(Request $request)
     {
-        $this->validate($request, [
-            'code' => [
-                'max:255',
-                Rule::unique('basements')->where(function ($query) {
-                    return $query->where('is_active', 1);
-                }),
-            ]
-        ]);
-
-        $data = $request->except('image', 'file');
-        $data['name'] = preg_replace('/[\n\r]/', "<br>", htmlspecialchars(trim($data['name']), ENT_QUOTES));
-        if (isset($data['name_arabic'])) {
-            $data['name_arabic'] = preg_replace('/[\n\r]/', "<br>", htmlspecialchars(trim($data['name_arabic']), ENT_QUOTES));
-        }
-
-        $data['product_details'] = str_replace('"', '@', $data['product_details'] ?? '');
-        $data['is_active'] = true;
-        $data['type'] = $data['type'] ?? 'standard';
-        $data['barcode_symbology'] = $data['barcode_symbology'] ?? 'C128';
-
-        $images = $request->file('image');
-        $image_names = [];
-        if ($images && is_array($images)) {
-            if (!file_exists(public_path("images/basement"))) {
-                mkdir(public_path("images/basement"), 0755, true);
-            }
-
-            foreach ($images as $key => $image) {
-                if ($image && $image->isValid()) {
-                    $ext = pathinfo($image->getClientOriginalName(), PATHINFO_EXTENSION);
-                    $imageName = date("Ymdhis") . ($key + 1);
-
-                    if (!config('database.connections.saleprosaas_landlord')) {
-                        $imageName = $imageName . '.' . $ext;
-                    } else {
-                        $imageName = $this->getTenantId() . '_' . $imageName . '.' . $ext;
-                    }
-
-                    $image->move(public_path('images/basement'), $imageName);
-                    $image_names[] = $imageName;
+        try {
+            $validator = \Validator::make($request->all(), [
+                'name' => 'required|string|max:255',
+                'code' => [
+                    'required',
+                    'max:255',
+                    Rule::unique('basements')->where(function ($query) {
+                        return $query->where('is_active', 1);
+                    }),
+                ],
+            ]);
+            
+            if ($validator->fails()) {
+                if ($request->ajax() || $request->wantsJson() || $request->expectsJson() || str_contains($request->header('Accept', ''), 'application/json')) {
+                    return response()->json([
+                        'success' => false,
+                        'errors' => $validator->errors(),
+                        'message' => 'Validation failed'
+                    ], 422);
                 }
+                return redirect()->back()->withErrors($validator)->withInput();
             }
-            if (count($image_names) > 0) {
-                $data['image'] = implode(",", $image_names);
+
+            $data = $request->except('image', 'file');
+            $data['name'] = preg_replace('/[\n\r]/', "<br>", htmlspecialchars(trim($data['name']), ENT_QUOTES));
+            if (isset($data['name_arabic'])) {
+                $data['name_arabic'] = preg_replace('/[\n\r]/', "<br>", htmlspecialchars(trim($data['name_arabic']), ENT_QUOTES));
+            }
+
+            $data['product_details'] = str_replace('"', '@', $data['product_details'] ?? '');
+            $data['is_active'] = true;
+            $data['type'] = $data['type'] ?? 'standard';
+            $data['barcode_symbology'] = $data['barcode_symbology'] ?? 'C128';
+            $data['price'] = $data['price'] ?? 0;
+
+            $images = $request->file('image');
+            $image_names = [];
+            if ($images && is_array($images)) {
+                if (!file_exists(public_path("images/basement"))) {
+                    mkdir(public_path("images/basement"), 0755, true);
+                }
+
+                foreach ($images as $key => $image) {
+                    if ($image && $image->isValid()) {
+                        $ext = pathinfo($image->getClientOriginalName(), PATHINFO_EXTENSION);
+                        $imageName = date("Ymdhis") . ($key + 1);
+
+                        if (!config('database.connections.saleprosaas_landlord')) {
+                            $imageName = $imageName . '.' . $ext;
+                        } else {
+                            $imageName = $this->getTenantId() . '_' . $imageName . '.' . $ext;
+                        }
+
+                        $image->move(public_path('images/basement'), $imageName);
+                        $image_names[] = $imageName;
+                    }
+                }
+                if (count($image_names) > 0) {
+                    $data['image'] = implode(",", $image_names);
+                } else {
+                    $data['image'] = 'zummXD2dvAtI.png';
+                }
             } else {
                 $data['image'] = 'zummXD2dvAtI.png';
             }
-        } else {
-            $data['image'] = 'zummXD2dvAtI.png';
-        }
 
-        $file = $request->file;
-        if ($file) {
-            if (!file_exists(public_path("basement/files"))) {
-                mkdir(public_path("basement/files"), 0755, true);
+            $file = $request->file;
+            if ($file) {
+                if (!file_exists(public_path("basement/files"))) {
+                    mkdir(public_path("basement/files"), 0755, true);
+                }
+                $ext = pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION);
+                $fileName = strtotime(date('Y-m-d H:i:s'));
+                $fileName = $fileName . '.' . $ext;
+                $file->move(public_path('basement/files'), $fileName);
+                $data['file'] = $fileName;
             }
-            $ext = pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION);
-            $fileName = strtotime(date('Y-m-d H:i:s'));
-            $fileName = $fileName . '.' . $ext;
-            $file->move(public_path('basement/files'), $fileName);
-            $data['file'] = $fileName;
-        }
 
-        Basement::create($data);
-        \Session::flash('create_message', 'Basement created successfully');
+            Basement::create($data);
+            \Session::flash('create_message', 'Warehouse Store created successfully');
+            
+            // Return JSON response for AJAX requests
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson() || str_contains($request->header('Accept', ''), 'application/json')) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Warehouse Store created successfully'
+                ], 200);
+            }
+            
+            return redirect()->route('warehouse-stores.index')->with('create_message', 'Warehouse Store created successfully');
+        } catch (\Exception $e) {
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson() || str_contains($request->header('Accept', ''), 'application/json')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('db.Failed to create warehouse store. Please try again') . ': ' . $e->getMessage()
+                ], 500);
+            }
+            return redirect()->back()->with('not_permitted', __('db.Failed to create warehouse store. Please try again'))->withInput();
+        }
     }
 
     public function edit($id)
     {
         $role = Role::find(Auth::user()->role_id);
-        if ($role->hasPermissionTo('basements-edit')) {
+        if ($role->hasPermissionTo('warehouse-stores-edit')) {
             $lims_brand_list = Brand::where('is_active', true)->get();
             $lims_category_list = Category::where('is_active', true)->get();
             $lims_unit_list = Unit::where('is_active', true)->get();
@@ -261,28 +293,85 @@ class BasementController extends Controller
     public function update(Request $request)
     {
         if (!env('USER_VERIFIED')) {
+            $isAjax = $request->ajax() || 
+                     $request->wantsJson() || 
+                     $request->expectsJson() || 
+                     str_contains($request->header('Accept', ''), 'application/json') ||
+                     $request->header('X-Requested-With') === 'XMLHttpRequest';
+            
+            if ($isAjax) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('db.This feature is disable for demo!')
+                ], 403);
+            }
             return redirect()->back()->with('not_permitted', __('db.This feature is disable for demo!'));
         }
 
         DB::beginTransaction();
         try {
-            $this->validate($request, [
+            $validator = \Validator::make($request->all(), [
+                'id' => 'required|integer|exists:basements,id',
+                'name' => 'required|string|max:255',
                 'code' => [
+                    'required',
                     'max:255',
                     Rule::unique('basements')->ignore($request->input('id'))->where(function ($query) {
                         return $query->where('is_active', 1);
                     }),
-                ]
+                ],
             ]);
+            
+            if ($validator->fails()) {
+                DB::rollBack();
+                $isAjax = $request->ajax() || 
+                         $request->wantsJson() || 
+                         $request->expectsJson() || 
+                         str_contains($request->header('Accept', ''), 'application/json') ||
+                         $request->header('X-Requested-With') === 'XMLHttpRequest';
+                
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'errors' => $validator->errors(),
+                        'message' => 'Validation failed'
+                    ], 422);
+                }
+                return redirect()->back()->withErrors($validator)->withInput();
+            }
 
             $lims_basement_data = Basement::findOrFail($request->input('id'));
             $data = $request->except('image', 'file', 'prev_img');
-            $data['name'] = htmlspecialchars(trim($data['name']), ENT_QUOTES);
+            
+            // Convert string IDs to integers
+            if (isset($data['category_id'])) {
+                $data['category_id'] = (int)$data['category_id'];
+            }
+            if (isset($data['unit_id'])) {
+                $data['unit_id'] = (int)$data['unit_id'];
+            }
+            if (isset($data['cost'])) {
+                $data['cost'] = (float)$data['cost'];
+            }
+            
+            // Clean and process name field
+            $data['name'] = preg_replace('/[\n\r]/', "<br>", htmlspecialchars(trim($data['name']), ENT_QUOTES));
             if (isset($data['name_arabic'])) {
-                $data['name_arabic'] = htmlspecialchars(trim($data['name_arabic']), ENT_QUOTES);
+                $data['name_arabic'] = preg_replace('/[\n\r]/', "<br>", htmlspecialchars(trim($data['name_arabic']), ENT_QUOTES));
             }
 
             $data['product_details'] = str_replace('"', '@', $data['product_details'] ?? '');
+            
+            // Ensure required fields have defaults
+            $data['barcode_symbology'] = $data['barcode_symbology'] ?? 'C128';
+            $data['type'] = $data['type'] ?? 'standard';
+            
+            // Preserve price if not provided (required in DB but not in form)
+            if (!isset($data['price']) || $data['price'] == '' || $data['price'] == null) {
+                $data['price'] = $lims_basement_data->price ?? 0;
+            } else {
+                $data['price'] = (float)$data['price'];
+            }
 
             $images = $request->file('image');
             if ($images && is_array($images) && count($images) > 0) {
@@ -337,14 +426,64 @@ class BasementController extends Controller
                 $fileName = $fileName . '.' . $ext;
                 $file->move(public_path('basement/files'), $fileName);
                 $data['file'] = $fileName;
+            } else {
+                // Preserve existing file if no new file uploaded
+                $data['file'] = $lims_basement_data->file;
             }
 
             $lims_basement_data->update($data);
             DB::commit();
-            \Session::flash('edit_message', 'Basement updated successfully');
+            \Session::flash('edit_message', 'Warehouse Store updated successfully');
+            
+            // Check if request is AJAX
+            $isAjax = $request->ajax() || 
+                     $request->wantsJson() || 
+                     $request->expectsJson() || 
+                     str_contains($request->header('Accept', ''), 'application/json') ||
+                     $request->header('X-Requested-With') === 'XMLHttpRequest';
+            
+            if ($isAjax) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Warehouse Store updated successfully'
+                ], 200);
+            }
+            
+            return redirect()->route('warehouse-stores.index')->with('edit_message', 'Warehouse Store updated successfully');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            $isAjax = $request->ajax() || 
+                     $request->wantsJson() || 
+                     $request->expectsJson() || 
+                     str_contains($request->header('Accept', ''), 'application/json') ||
+                     $request->header('X-Requested-With') === 'XMLHttpRequest';
+            
+            if ($isAjax) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $e->errors(),
+                    'message' => 'Validation failed'
+                ], 422);
+            }
+            return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('not_permitted', __('db.Failed to update basement. Please try again'));
+            \Log::error('Warehouse Store Update Error: ' . $e->getMessage());
+            \Log::error('Stack Trace: ' . $e->getTraceAsString());
+            
+            $isAjax = $request->ajax() || 
+                     $request->wantsJson() || 
+                     $request->expectsJson() || 
+                     str_contains($request->header('Accept', ''), 'application/json') ||
+                     $request->header('X-Requested-With') === 'XMLHttpRequest';
+            
+            if ($isAjax) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('db.Failed to update warehouse store. Please try again') . ': ' . $e->getMessage()
+                ], 500);
+            }
+            return redirect()->back()->with('not_permitted', __('db.Failed to update warehouse store. Please try again'));
         }
     }
 
@@ -356,7 +495,7 @@ class BasementController extends Controller
             $lims_basement_data->is_active = false;
             $lims_basement_data->save();
         }
-        return 'Basement deleted successfully!';
+        return 'Warehouse Store deleted successfully!';
     }
 
     public function destroy($id)
@@ -367,7 +506,7 @@ class BasementController extends Controller
             $lims_basement_data = Basement::findOrFail($id);
             $lims_basement_data->is_active = false;
             $lims_basement_data->save();
-            return redirect()->back()->with('message', __('db.Basement deleted successfully'));
+            return redirect()->back()->with('message', __('db.Warehouse Store deleted successfully'));
         }
     }
 
