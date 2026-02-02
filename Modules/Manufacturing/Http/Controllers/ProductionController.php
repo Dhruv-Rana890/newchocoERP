@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Product_Warehouse;
 use App\Models\Unit;
+use App\Models\RawMaterial;
 use Modules\Manufacturing\Entities\Production;
 use Modules\Manufacturing\Entities\ProductProduction;
 use App\Models\Tax;
@@ -169,6 +170,9 @@ class ProductionController extends Controller
                             <ul class="dropdown-menu edit-options dropdown-menu-right dropdown-default" user="menu">
                                 <li>
                                     <button type="button" class="btn btn-link view"><i class="fa fa-eye"></i> '.__('db.View').'</button>
+                                </li>
+                                <li>
+                                    <a href="'.route('productions.edit', $production->id).'" class="btn btn-link"><i class="dripicons-document-edit"></i> '.__('db.edit').'</a>
                                 </li>';
 
                 $nestedData['options'] .= \Form::open(["route" => ["productions.destroy", $production->id], "method" => "DELETE"] ).'
@@ -178,10 +182,24 @@ class ProductionController extends Controller
                     </ul>
                 </div>';
 
-                // data for production details by one click
                 $user = $production->user;
-                $nestedData['production'] = array( '[ "'.date(config('date_format'), strtotime($production->created_at->toDateString())).'"', ' "'.$production->reference_no.'"', ' "'.$status.'"',  ' "'.$production->id.'"', ' "'.$production->warehouse->name.'"', ' "'.$production->total_tax.'"', ' "'.$production->total_cost.'"', ' "'.$production->shipping_cost.'"', ' "'.$production->shipping_cost.'"',' "'.$production->grand_total.'"', ' "'.preg_replace('/\s+/S', " ", $production->note).'"', ' "'.$user->name.'"', ' "'.$user->email.'"', ' "'.$production->document.'"]'
-                );
+                $nestedData['production'] = [
+                    date(config('date_format'), strtotime($production->created_at->toDateString())),
+                    $production->reference_no,
+                    $status,
+                    $production->id,
+                    $production->warehouse->name,
+                    $production->total_tax,
+                    $production->total_cost,
+                    $production->shipping_cost,
+                    $production->grand_total,
+                    preg_replace('/\s+/S', ' ', $production->note ?? ''),
+                    $user->name,
+                    $user->email,
+                    $production->document ?? '',
+                    $production->batch_lot_number ?? '',
+                    $production->expiry_date ? $production->expiry_date->format(config('date_format')) : '',
+                ];
                 $data[] = $nestedData;
             }
         }
@@ -213,8 +231,13 @@ class ProductionController extends Controller
         $lims_tax_list = Tax::where('is_active', true)->get();
         $lims_product_list_without_variant = $this->productWithoutVariant();
         $lims_product_list_with_variant = $this->productWithVariant();
-        // return view('manufacturing::production-copy.create', compact('lims_product_list_with_variant','lims_product_list_without_variant', 'lims_warehouse_list', 'lims_product_list', 'lims_tax_list'));
-        return view('manufacturing::production.create', compact('lims_product_list_with_variant','lims_product_list_without_variant', 'lims_warehouse_list', 'lims_product_list', 'lims_tax_list'));
+        $default_warehouse_id = Warehouse::where('is_active', true)
+            ->whereRaw('LOWER(name) LIKE ?', ['%cold%storage%'])
+            ->value('id');
+        if (!$default_warehouse_id) {
+            $default_warehouse_id = $lims_warehouse_list->first()?->id;
+        }
+        return view('manufacturing::production.create', compact('lims_product_list_with_variant','lims_product_list_without_variant', 'lims_warehouse_list', 'lims_product_list', 'lims_tax_list', 'default_warehouse_id'));
     }
 
     public function store(Request $request)
@@ -254,6 +277,16 @@ class ProductionController extends Controller
             $data['created_at'] = date("Y-m-d H:i:s", strtotime($data['created_at']));
         else
             $data['created_at'] = date("Y-m-d H:i:s");
+        $todayCount = Production::whereDate('created_at', today())->count();
+        $data['batch_lot_number'] = 'BATCH-' . date('Ymd') . '-' . str_pad($todayCount + 1, 4, '0', STR_PAD_LEFT);
+        if (!empty($data['expiry_date'])) {
+            $dt = \DateTime::createFromFormat('d-m-Y', $data['expiry_date']) ?: \DateTime::createFromFormat('Y-m-d', $data['expiry_date']);
+            $data['expiry_date'] = $dt ? $dt->format('Y-m-d') : null;
+        } else {
+            $data['expiry_date'] = null;
+        }
+        $data['production_overhead_type'] = $data['production_overhead_type'] ?? 'fixed';
+        $data['production_overhead_cost'] = $data['production_overhead_cost'] ?? 0;
         $data['item'] = count($request->product_qty);
         $data['total_qty'] = $request->total_qty ?? 1;
         $data['product_list'] = implode(",", $data['product_list']);
@@ -294,47 +327,56 @@ class ProductionController extends Controller
         $qty = $data['product_qty'];
         $purchase_unit = $data['production_unit_ids'];
         $net_unit_cost = $data['unit_price'];
-        // $tax_rate = $data['tax_rate'];
-        // $tax = $data['tax'];
         $total = $data['subtotal'];
+        $is_raw_material_list = $request->is_raw_material ?? [];
 
         $child_variant_list = $request->variant_id ?? [];
         foreach ($product_id as $index => $child_id) {
             $lims_purchase_unit_data  = Unit::where('id', $purchase_unit[$index])->first();
-            $child_data = Product::find($child_id);
             if ($lims_purchase_unit_data->operator == '*') {
-                    $reduced_qty = $qty[$index] * $lims_purchase_unit_data->operation_value;
-                }
-                else {
-                    $reduced_qty = $qty[$index] / $lims_purchase_unit_data->operation_value;
-                }
-            if(count($child_variant_list) && isset($child_variant_list[$index]) && $child_variant_list[$index]) {
-                $child_product_variant_data = ProductVariant::where([
-                    ['product_id', $child_id],
-                    ['variant_id', $child_variant_list[$index]]
-                ])->first();
-                $child_product_variant_data->qty -= $reduced_qty;
-                $child_product_variant_data->save();
-
-                $child_warehouse_data = Product_Warehouse::where([
-                    ['product_id', $child_id],
-                    ['variant_id', $child_variant_list[$index]],
-                    ['warehouse_id', $lims_production_data->warehouse_id ],
-                ])->first();
+                $reduced_qty = $qty[$index] * $lims_purchase_unit_data->operation_value;
             } else {
-                $child_warehouse_data = Product_Warehouse::where([
-                    ['product_id', $child_id],
-                    ['warehouse_id', $lims_production_data->warehouse_id ],
-                ])->first();
+                $reduced_qty = $qty[$index] / $lims_purchase_unit_data->operation_value;
             }
-
-            if($child_warehouse_data){
-                $child_warehouse_data->qty -= $reduced_qty;
-                $child_warehouse_data->save();
+            $is_raw = !empty($is_raw_material_list[$index]) && $is_raw_material_list[$index] == '1';
+            if ($is_raw) {
+                $rawMaterial = RawMaterial::find($child_id);
+                if ($rawMaterial) {
+                    $rawMaterial->qty -= $reduced_qty;
+                    $rawMaterial->save();
+                }
+            } else {
+                $child_data = Product::find($child_id);
+                if (!$child_data) {
+                    continue;
+                }
+                if(count($child_variant_list) && isset($child_variant_list[$index]) && $child_variant_list[$index]) {
+                    $child_product_variant_data = ProductVariant::where([
+                        ['product_id', $child_id],
+                        ['variant_id', $child_variant_list[$index]]
+                    ])->first();
+                    if ($child_product_variant_data) {
+                        $child_product_variant_data->qty -= $reduced_qty;
+                        $child_product_variant_data->save();
+                    }
+                    $child_warehouse_data = Product_Warehouse::where([
+                        ['product_id', $child_id],
+                        ['variant_id', $child_variant_list[$index]],
+                        ['warehouse_id', $lims_production_data->warehouse_id ],
+                    ])->first();
+                } else {
+                    $child_warehouse_data = Product_Warehouse::where([
+                        ['product_id', $child_id],
+                        ['warehouse_id', $lims_production_data->warehouse_id ],
+                    ])->first();
+                }
+                if($child_warehouse_data){
+                    $child_warehouse_data->qty -= $reduced_qty;
+                    $child_warehouse_data->save();
+                }
+                $child_data->qty -= $reduced_qty;
+                $child_data->save();
             }
-
-            $child_data->qty -= $reduced_qty;
-            $child_data->save();
         }
         DB::commit();
         return redirect('manufacturing/productions')->with('message', __('db.Production created successfully'));
@@ -491,50 +533,61 @@ class ProductionController extends Controller
     {
         try {
             $lims_product_production_data = Production::where('id', $id)->first();
+            if (!$lims_product_production_data) {
+                return response()->json(['status' => false, 'message' => 'Production not found'], 404);
+            }
             $proudction_units_ids = explode(',', $lims_product_production_data->production_units_ids);
             $product_list = explode(',', $lims_product_production_data->product_list);
             $wastage_percent = explode(',', $lims_product_production_data->wastage_percent);
             $qty_list = explode(',', $lims_product_production_data->qty_list);
-            $variant_list = explode(',', $lims_product_production_data->variant_list);
+            $variant_list = $lims_product_production_data->variant_list ? explode(',', $lims_product_production_data->variant_list) : [];
             $price_list = explode(',', $lims_product_production_data->price_list);
 
-            // production info
             $production_info = [];
             $production_info['shipping_cost']      = $lims_product_production_data->shipping_cost;
             $production_info['production_cost']    = $lims_product_production_data->production_cost ?? 0;
             $production_info['grand_total']        = $lims_product_production_data->grand_total;
             $production_info['total_qty']          = $lims_product_production_data->total_qty;
             $product_production = [];
-            foreach ($product_list as $key => $id) {
-                $product = Product::find($id);
-                $variant_id = $variant_list[$key] ?? null;
-
-                // Handle variant code
-                if ($variant_id) {
-                    $variant = ProductVariant::FindExactProduct($id, $variant_id)->first();
-                    if ($variant) {
-                        $product->code = $variant->item_code;
+            foreach ($product_list as $key => $ingredient_id) {
+                $rawMaterial = RawMaterial::find($ingredient_id);
+                if ($rawMaterial) {
+                    $name = $rawMaterial->name;
+                    $code = $rawMaterial->code ?? '';
+                } else {
+                    $product = Product::find($ingredient_id);
+                    if (!$product) {
+                        continue;
+                    }
+                    $name = $product->name;
+                    $code = $product->code ?? '';
+                    $variant_id = $variant_list[$key] ?? null;
+                    if ($variant_id) {
+                        $variant = ProductVariant::FindExactProduct($ingredient_id, $variant_id)->first();
+                        if ($variant) {
+                            $code = $variant->item_code;
+                        }
                     }
                 }
-
-                $unit = Unit::query()
-                    ->where('id', $proudction_units_ids[$key])
-                    ->first();
-                    if($unit->operator == '*'){
-                        $subtotal = $price_list[$key] * ($unit->operation_value * $qty_list[$key] ?? 1);
-                    }elseif($unit->operator == '/'){
-                        $subtotal = $price_list[$key] / $unit->operation_value;
-                    }else{
-                        $subtotal = $price_list[$key] * 1;
-                    }
+                $unit = Unit::query()->where('id', $proudction_units_ids[$key] ?? 0)->first();
+                if (!$unit) {
+                    continue;
+                }
+                if ($unit->operator == '*') {
+                    $subtotal = ($price_list[$key] ?? 0) * ($unit->operation_value * ($qty_list[$key] ?? 1));
+                } elseif ($unit->operator == '/') {
+                    $subtotal = ($price_list[$key] ?? 0) / $unit->operation_value;
+                } else {
+                    $subtotal = ($price_list[$key] ?? 0) * ($qty_list[$key] ?? 1);
+                }
 
                 $product_production[] = [
-                    'id'                => $product->id,
-                    'name'              => $product->name,
-                    'code'              => $product->code,
+                    'id'                => $ingredient_id,
+                    'name'              => $name,
+                    'code'              => $code,
                     'wastage_percent'   => $wastage_percent[$key] ?? 0,
                     'qty'               => $qty_list[$key] ?? 1,
-                    'unit_cost'         => $product->cost,
+                    'unit_cost'         => $rawMaterial ? ($rawMaterial->cost ?? 0) : ($product->cost ?? 0),
                     'unit_price'        => $price_list[$key] ?? 0,
                     'subtotal'          => $subtotal,
                     'unit_name'         => $unit->unit_name,
@@ -546,14 +599,13 @@ class ProductionController extends Controller
                 'data' => $product_production,
                 'production_info' => $production_info
             ]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
                 'message' => 'Something is wrong!',
                 'error' => $e->getMessage(),
             ], 500);
         }
-
     }
 
      public function backupproductProductionData($id)
@@ -585,25 +637,85 @@ class ProductionController extends Controller
         return view('manufacturing::show');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     * @param int $id
-     * @return Renderable
-     */
     public function edit($id)
     {
-        return view('manufacturing::edit');
+        $lims_production_data = Production::with('product', 'warehouse')->findOrFail($id);
+        if (Auth::user()->role_id > 2) {
+            $lims_warehouse_list = Warehouse::where([
+                ['is_active', true],
+                ['id', Auth::user()->warehouse_id]
+            ])->get();
+        } else {
+            $lims_warehouse_list = Warehouse::where('is_active', true)->get();
+        }
+        return view('manufacturing::production.edit', compact('lims_production_data', 'lims_warehouse_list'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     * @param Request $request
-     * @param int $id
-     * @return Renderable
-     */
     public function update(Request $request, $id)
     {
-        //
+        $lims_production_data = Production::findOrFail($id);
+        $data = $request->only([
+            'created_at', 'warehouse_id', 'production_cost', 'shipping_cost', 'note',
+            'production_overhead_type', 'production_overhead_cost', 'expiry_date'
+        ]);
+        if (isset($data['created_at'])) {
+            $data['created_at'] = date("Y-m-d H:i:s", strtotime($data['created_at']));
+        }
+        if (!empty($data['expiry_date'])) {
+            $dt = \DateTime::createFromFormat('d-m-Y', $data['expiry_date']) ?: \DateTime::createFromFormat('Y-m-d', $data['expiry_date']);
+            $data['expiry_date'] = $dt ? $dt->format('Y-m-d') : null;
+        } else {
+            $data['expiry_date'] = null;
+        }
+        $overhead = 0;
+        $baseTotal = (float)($lims_production_data->total_cost ?? 0);
+        if (($data['production_overhead_type'] ?? 'fixed') === 'percent') {
+            $overhead = $baseTotal * (float)($data['production_overhead_cost'] ?? 0) / 100;
+        } else {
+            $overhead = (float)($data['production_overhead_cost'] ?? 0);
+        }
+        $data['grand_total'] = $baseTotal + (float)($data['production_cost'] ?? 0) + (float)($data['shipping_cost'] ?? 0) + $overhead;
+        if ($request->hasFile('document')) {
+            $v = Validator::make(
+                ['extension' => strtolower($request->document->getClientOriginalExtension())],
+                ['extension' => 'in:jpg,jpeg,png,gif,pdf,csv,docx,xlsx,txt']
+            );
+            if (!$v->fails()) {
+                if ($lims_production_data->document && file_exists('public/documents/production/' . $lims_production_data->document)) {
+                    unlink('public/documents/production/' . $lims_production_data->document);
+                }
+                $ext = pathinfo($request->document->getClientOriginalName(), PATHINFO_EXTENSION);
+                $documentName = date("Ymdhis") . '.' . $ext;
+                $request->document->move('public/documents/production', $documentName);
+                $data['document'] = $documentName;
+            }
+        }
+        if (isset($data['warehouse_id']) && $data['warehouse_id'] != $lims_production_data->warehouse_id) {
+            $old_pw = Product_Warehouse::where([
+                ['product_id', $lims_production_data->product_id],
+                ['warehouse_id', $lims_production_data->warehouse_id]
+            ])->first();
+            if ($old_pw) {
+                $old_pw->qty -= $lims_production_data->total_qty;
+                $old_pw->save();
+            }
+            $new_pw = Product_Warehouse::where([
+                ['product_id', $lims_production_data->product_id],
+                ['warehouse_id', $data['warehouse_id']]
+            ])->first();
+            if ($new_pw) {
+                $new_pw->qty += $lims_production_data->total_qty;
+                $new_pw->save();
+            } else {
+                Product_Warehouse::create([
+                    'product_id' => $lims_production_data->product_id,
+                    'warehouse_id' => $data['warehouse_id'],
+                    'qty' => $lims_production_data->total_qty
+                ]);
+            }
+        }
+        $lims_production_data->update($data);
+        return redirect('manufacturing/productions')->with('message', __('db.Production updated successfully'));
     }
 
     /**

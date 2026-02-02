@@ -11,6 +11,8 @@ class Production extends Model
     use HasFactory;
     protected $fillable =[
         "reference_no",
+        "batch_lot_number",
+        "expiry_date",
         "user_id",
         "warehouse_id",
         "item",
@@ -24,6 +26,8 @@ class Production extends Model
         "note",
         "created_at",
         "production_cost",
+        "production_overhead_type",
+        "production_overhead_cost",
         'production_units_ids',
         'wastage_percent',
         'product_list',
@@ -31,6 +35,8 @@ class Production extends Model
         'qty_list',
         'price_list',
     ];
+
+    protected $dates = ['expiry_date'];
 
     public function warehouse()
     {
