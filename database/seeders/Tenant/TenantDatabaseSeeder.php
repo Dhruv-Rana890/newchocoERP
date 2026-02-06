@@ -1098,6 +1098,16 @@ class TenantDatabaseSeeder extends Seeder
                     'name' => 'warehouse-store-purchases-delete',
                     'guard_name' => 'web',
                 ],
+                [
+                    'id' => 202,
+                    'name' => 'sidebar_rawmaterial',
+                    'guard_name' => 'web',
+                ],
+                [
+                    'id' => 203,
+                    'name' => 'sidebar_warehouse_stores',
+                    'guard_name' => 'web',
+                ],
         ];
 
         $insertData = [];

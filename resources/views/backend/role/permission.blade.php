@@ -169,12 +169,6 @@
 														{{ in_array($key, $all_permission) ? 'checked' : '' }}>
 													<label for="{{ $key }}"></label>
 												</div>
-												@if($perm == 'index')
-												<div class="checkbox icheckbox_square-blue" style="margin-top:8px;">
-													<input type="checkbox" value="1" id="purchases-show-price" name="purchases-show-price" {{ in_array('purchases-show-price', $all_permission) ? 'checked' : '' }}>
-													<label for="purchases-show-price" class="padding05">{{ __('db.Show Price') }}</label>
-												</div>
-												@endif
 											</td>
 										@endforeach
 									</tr>
