@@ -10223,4 +10223,28 @@ return array(
         'key' => 'Failed to update warehouse store. Please try again',
         'value' => 'Failed to update warehouse store. Please try again',
     ),
+    1714 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Single Product List',
+        'value' => 'Single Product List',
+    ),
+    1715 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Add Single Product',
+        'value' => 'Add Single Product',
+    ),
+    1716 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Combo Product List',
+        'value' => 'Combo Product List',
+    ),
+    1717 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Add Combo Product',
+        'value' => 'Add Combo Product',
+    ),
 );

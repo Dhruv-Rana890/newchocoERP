@@ -248,7 +248,7 @@
                                                                 <td>
                                                                     <div class="input-group" style="max-width: unset">
                                                                         <input type="number" class="form-control qty"
-                                                                            min="1" name="product_qty[]"
+                                                                            name="product_qty[]"
                                                                             value="{{ $qty_list[$key] ?? 1 }}"
                                                                             step="any" placeholder="Qty"
                                                                             aria-label="Quantity">
@@ -1858,7 +1858,7 @@
                         var newRow = $("<tr>");
                         var cols = '<td>' + basement.name + ' [' + basement.code + '] <span class="badge badge-info">Warehouse Store</span></td>';
                         cols += '<td><div class="input-group"><input type="number" name="wastage_percent[]" class="form-control wastage_percent" value="0"/><div class="input-group-append"><span class="input-group-text">%</span></div></div></td>';
-                        cols += '<td><div class="input-group" style="max-width: unset"><input type="number" class="form-control qty" min="1" name="product_qty[]" value="1" step="any" placeholder="Qty"><div class="input-group-append">' + unitSelect + '</div></div></td>';
+                        cols += '<td><div class="input-group" style="max-width: unset"><input type="number" class="form-control qty" name="product_qty[]" value="1" step="any" placeholder="Qty"><div class="input-group-append">' + unitSelect + '</div></div></td>';
                         cols += '<td><input type="number" class="form-control unit_cost" name="product_unit_cost[]" value="' + basement.cost + '"/></td>';
                         cols += '<td><input type="number" class="form-control unit_price" name="unit_price[]" value="' + basement.price + '" step="any"/></td>';
                         cols += '<td><input type="number" class="form-control subtotal" name="subtotal[]" value="' + basement.price + '" step="any"/></td>';
@@ -1897,7 +1897,7 @@
                             var newRow = $("<tr>");
                             var cols = '<td>' + data[0] + ' [' + data[1] + '] <span class="badge badge-primary">Single Product</span></td>';
                             cols += '<td><div class="input-group"><input type="number" name="wastage_percent[]" class="form-control wastage_percent" value="0"/><div class="input-group-append"><span class="input-group-text">%</span></div></div></td>';
-                            cols += '<td><div class="input-group" style="max-width: unset"><input type="number" class="form-control qty" min="1" name="product_qty[]" value="1" step="any" placeholder="Qty"><div class="input-group-append">' + (data[13] || '') + '</div></div></td>';
+                            cols += '<td><div class="input-group" style="max-width: unset"><input type="number" class="form-control qty" name="product_qty[]" value="1" step="any" placeholder="Qty"><div class="input-group-append">' + (data[13] || '') + '</div></div></td>';
                             cols += '<td><input type="number" class="form-control unit_cost" name="product_unit_cost[]" value="' + data[10] + '"/></td>';
                             cols += '<td><input type="number" class="form-control unit_price" name="unit_price[]" value="' + data[2] + '" step="any"/></td>';
                             cols += '<td><input type="number" class="form-control subtotal" name="subtotal[]" value="' + data[2] + '" step="any"/></td>';

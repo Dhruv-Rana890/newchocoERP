@@ -82,7 +82,7 @@
                                      <div class="col-md-4">
                                         <div class="form-group">
                                             <label>{{__('db.Total Qty')}}</label>
-                                            <input type="number" name="total_qty" min="1" class="form-control total_qty" value="1" step="any" />
+                                            <input type="number" name="total_qty" class="form-control total_qty" value="1" step="any" />
                                         </div>
                                     </div>
                                     <div class="col-md-4">
@@ -907,7 +907,6 @@
                                     <div class="input-group" style="max-width: unset">
                                         <input type="number"
                                             class="form-control qty"
-                                            min="1"
                                             name="product_qty[]"
                                             value="1"
                                             step="any"
