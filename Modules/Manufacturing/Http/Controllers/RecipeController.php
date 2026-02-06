@@ -85,10 +85,9 @@ class RecipeController extends Controller
             $custom_fields = CustomField::where('belongs_to', 'product')->get();
 
             $general_setting = DB::table('general_settings')->select('modules')->first();
-            $lims_product_list = Product::where([
-                    ['type', 'standard'],
-                    ['is_active', true]
-                ])->orWhere('type','combo')->get(['name','id']);
+            $lims_product_list = Product::where('is_active', true)
+                ->where('type', 'standard')
+                ->get(['name','id']);
             if(in_array('restaurant',explode(',',$general_setting->modules))){
                 $kitchen_list = DB::table('kitchens')->where('is_active',1)->get();
                 $menu_type_list = DB::table('menu_type')->where('is_active',1)->get();

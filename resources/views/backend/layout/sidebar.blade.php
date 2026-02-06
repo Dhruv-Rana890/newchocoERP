@@ -19,9 +19,9 @@
                         @endcan
                         @can('products-index')
                             <li id="product-single-list-menu"><a href="{{ route('products.single.index') }}">{{ __('db.Single Product List') }}</a></li>
-                            <li id="product-create-single-menu"><a href="{{ route('products.single.create') }}">{{ __('db.Add Single Product') }}</a></li>
+                            <!-- <li id="product-create-single-menu"><a href="{{ route('products.single.create') }}">{{ __('db.Add Single Product') }}</a></li> -->
                             <li id="product-combo-list-menu"><a href="{{ route('products.combo.index') }}">{{ __('db.Combo Product List') }}</a></li>
-                            <li id="product-create-combo-menu"><a href="{{ route('products.combo.create') }}">{{ __('db.Add Combo Product') }}</a></li>
+                            <!-- <li id="product-create-combo-menu"><a href="{{ route('products.combo.create') }}">{{ __('db.Add Combo Product') }}</a></li> -->
                         @endcan
                         @can('products-add')
                         @endcan

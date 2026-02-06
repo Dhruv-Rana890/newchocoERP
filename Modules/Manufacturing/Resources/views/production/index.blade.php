@@ -232,7 +232,7 @@
             "processing": true,
             "serverSide": true,
             "ajax":{
-                url:"productions/production-data",
+                url:"{{ route('productions.data') }}",
                 data: {
                     starting_date: starting_date,
                     ending_date: ending_date,

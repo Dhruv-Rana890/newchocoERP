@@ -340,33 +340,25 @@
                         qty = data.product_warehouse[1];
                         batch = data.product_warehouse[2];
                         expired_date = data.product_warehouse[3];
-                        imei_numbers = data.product_warehouse[4];
+                        unit_cost = data.product_warehouse[4];
                         var newHead = $("<thead>");
                         var newBody = $("<tbody>");
                         var newRow = $("<tr>");
-                        var productQty = 0;
-                        newRow.append('<th>{{__("db.Warehouse")}}</th><th>{{__("db.Batch No")}}</th><th>{{__("db.Expired Date")}}</th><th>{{__("db.Quantity")}}</th><th>{{__("db.IMEI or Serial Numbers")}}</th>');
+                        newRow.append('<th>{{__("db.Warehouse")}}</th><th>{{__("db.Batch No")}}</th><th>{{__("db.Expired Date")}}</th><th>{{__("db.Quantity")}}</th><th>{{__("db.Unit Cost")}}</th>');
                         newHead.append(newRow);
                         $.each(warehouse, function(index) {
-                            // productQty += qty[index];
                             var newRow = $("<tr>");
                             var cols = '';
                             cols += '<td>' + warehouse[index] + '</td>';
                             cols += '<td>' + batch[index] + '</td>';
                             cols += '<td>' + expired_date[index] + '</td>';
                             cols += '<td>' + qty[index] + '</td>';
-                            // console.log(imei_numbers);
-                            if (imei_numbers.length <= index) {
-                                cols += '<td style="max-height: 100px; overflow-y: auto; word-break: break-word; white-space: normal; display: block; padding-right: 10px;">' + 'N/A' + '</td>';
-                            } else {
-                                cols += '<td style="max-height: 100px; overflow-y: auto; word-break: break-word; white-space: normal; display: block; padding-right: 10px;">' + imei_numbers[index].split(',').join(",<br/>") + '</td>';
-                            }
-
+                            cols += '<td>' + (unit_cost[index] || 'N/A') + '</td>';
                             newRow.append(cols);
                             newBody.append(newRow);
-                            $("table.product-warehouse-list").append(newHead);
-                            $("table.product-warehouse-list").append(newBody);
                         });
+                        $("table.product-warehouse-list").append(newHead);
+                        $("table.product-warehouse-list").append(newBody);
                         // console.log(productQty);
                         $("#product-warehouse-section").removeClass('d-none');
                     }

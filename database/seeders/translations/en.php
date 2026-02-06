@@ -10247,4 +10247,82 @@ return array(
         'key' => 'Add Combo Product',
         'value' => 'Add Combo Product',
     ),
+    1718 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Assemble Combo',
+        'value' => 'Assemble Combo',
+    ),
+    1719 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Select Warehouse',
+        'value' => 'Select Warehouse',
+    ),
+    1720 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Assemble',
+        'value' => 'Assemble',
+    ),
+    1721 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Combo assembled successfully',
+        'value' => 'Combo assembled successfully',
+    ),
+    1722 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Error loading data',
+        'value' => 'Error loading data',
+    ),
+    1723 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Please fill all required fields',
+        'value' => 'Please fill all required fields',
+    ),
+    1724 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Please select warehouse for all ingredients',
+        'value' => 'Please select warehouse for all ingredients',
+    ),
+    1725 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Invalid combo product',
+        'value' => 'Invalid combo product',
+    ),
+    1726 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Insufficient stock for',
+        'value' => 'Insufficient stock for',
+    ),
+    1727 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Combo Product',
+        'value' => 'Combo Product',
+    ),
+    1728 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Combo Warehouse',
+        'value' => 'Combo Warehouse',
+    ),
+    1729 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Warehouse Store',
+        'value' => 'Warehouse Store',
+    ),
+    1730 =>
+    array(
+        'locale' => 'en',
+        'key' => 'Single Product',
+        'value' => 'Single Product',
+    ),
 );

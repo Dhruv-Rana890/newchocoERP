@@ -30,6 +30,7 @@ use Illuminate\Validation\Rule;
 use App\Models\Product_Supplier;
 use App\Models\Product_Warehouse;
 use App\Models\Basement;
+use Modules\Manufacturing\Entities\Production;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Log;
@@ -422,12 +423,20 @@ class ProductController extends Controller
                         <button type="button" class="btn btn-link view"><i class="fa fa-eye"></i> ' . __('db.View') . '</button>
                     </li>';
 
-            // Add Warehouse button - show for role_id <= 2 (admin/manager)
+            // Add Warehouse button - show for role_id <= 2 (admin/manager), only for standard products
             $role_id = Auth::user()->role_id ?? 0;
             if ($role_id <= 2) {
-                $nestedData['options'] .= '<li>
-                    <button type="button" class="btn btn-link view-warehouse"><i class="dripicons-stack"></i> ' . __('db.Warehouse') . '</button>
-                </li>';
+                if ($product->type == 'standard') {
+                    $nestedData['options'] .= '<li>
+                        <button type="button" class="btn btn-link view-warehouse"><i class="dripicons-stack"></i> ' . __('db.Warehouse') . '</button>
+                    </li>';
+                }
+                // Add Assemble Combo button for combo products - opens modal for stock assembly
+                if ($product->type == 'combo') {
+                    $nestedData['options'] .= '<li>
+                        <button type="button" class="btn btn-link btn-assemble-combo"><i class="dripicons-plus"></i> ' . __('db.Assemble Combo') . '</button>
+                    </li>';
+                }
             }
 
             if (in_array("products-edit", $request['all_permission']))
@@ -1708,6 +1717,7 @@ class ProductController extends Controller
         $qty = [];
         $batch = [];
         $expired_date = [];
+        $unit_cost = [];
         $imei_number = [];
         $warehouse_name = [];
         $variant_name = [];
@@ -1717,7 +1727,11 @@ class ProductController extends Controller
         $lims_product_data = Product::select('id', 'is_variant')->find($id);
         if ($lims_product_data->is_variant) {
             $lims_product_variant_warehouse_data = Product_Warehouse::where('product_id', $lims_product_data->id)->orderBy('warehouse_id')->get();
-            $lims_product_warehouse_data = Product_Warehouse::select('warehouse_id', DB::raw('sum(qty) as qty'))->where('product_id', $id)->groupBy('warehouse_id')->get();
+            // Show batch-wise rows (same warehouse can have multiple rows per batch_lot_number)
+            $lims_product_warehouse_data = Product_Warehouse::where('product_id', $id)
+                ->orderBy('warehouse_id')
+                ->orderBy('product_batch_id')
+                ->get();
             foreach ($lims_product_variant_warehouse_data as $key => $product_variant_warehouse_data) {
                 $lims_warehouse_data = Warehouse::find($product_variant_warehouse_data->warehouse_id);
                 $lims_variant_data = Variant::find($product_variant_warehouse_data->variant_id);
@@ -1730,10 +1744,16 @@ class ProductController extends Controller
         }
         foreach ($lims_product_warehouse_data as $key => $product_warehouse_data) {
             $lims_warehouse_data = Warehouse::find($product_warehouse_data->warehouse_id);
+            $product_batch_data = null;
             if ($product_warehouse_data->product_batch_id) {
                 $product_batch_data = ProductBatch::select('batch_no', 'expired_date')->find($product_warehouse_data->product_batch_id);
-                $batch_no = $product_batch_data->batch_no;
-                $expiredDate = date(config('date_format'), strtotime($product_batch_data->expired_date));
+                if ($product_batch_data) {
+                    $batch_no = $product_batch_data->batch_no;
+                    $expiredDate = date(config('date_format'), strtotime($product_batch_data->expired_date));
+                } else {
+                    $batch_no = 'N/A';
+                    $expiredDate = 'N/A';
+                }
             } else {
                 $batch_no = 'N/A';
                 $expiredDate = 'N/A';
@@ -1742,12 +1762,28 @@ class ProductController extends Controller
             $batch[] = $batch_no;
             $expired_date[] = $expiredDate;
             $qty[] = $product_warehouse_data->qty;
+            
+            // Calculate unit cost from Production (grand_total / total_qty)
+            $unit_cost_value = 'N/A';
+            if ($product_batch_data && $product_batch_data->batch_no) {
+                $production = Production::where([
+                    ['product_id', $id],
+                    ['batch_lot_number', $product_batch_data->batch_no]
+                ])->first();
+                if ($production && $production->total_qty > 0) {
+                    $unit_cost_value = number_format($production->grand_total / $production->total_qty, config('decimal', 2), '.', '');
+                }
+            }
+            $unit_cost[] = $unit_cost_value;
 
-            $imeis = Product_Warehouse::select('imei_number')
+            $imeisQuery = Product_Warehouse::select('imei_number')
                 ->where('product_id', $lims_product_data->id)
                 ->where('warehouse_id', $product_warehouse_data->warehouse_id)
-                ->whereNotNull('imei_number')
-                ->get();
+                ->whereNotNull('imei_number');
+            if ($product_warehouse_data->product_batch_id) {
+                $imeisQuery->where('product_batch_id', $product_warehouse_data->product_batch_id);
+            }
+            $imeis = $imeisQuery->get();
 
             if ($product_warehouse_data->imei_number && !str_contains($product_warehouse_data->imei_number, 'null')) {
                 $imei_number[$key] = $product_warehouse_data->imei_number;
@@ -1771,9 +1807,230 @@ class ProductController extends Controller
             }
         }
 
-        $product_warehouse = [$warehouse, $qty, $batch, $expired_date, $imei_number];
+        $product_warehouse = [$warehouse, $qty, $batch, $expired_date, $unit_cost, $imei_number];
         $product_variant_warehouse = [$warehouse_name, $variant_name, $variant_qty];
         return ['product_warehouse' => $product_warehouse, 'product_variant_warehouse' => $product_variant_warehouse];
+    }
+
+    /**
+     * Get combo product ingredients with warehouse availability for assembly modal.
+     * Supports: Product (p_X or plain id) and Basement/Warehouse Store (b_X)
+     */
+    public function comboIngredientsData($id)
+    {
+        $combo = Product::findOrFail($id);
+        if ($combo->type != 'combo') {
+            return response()->json(['error' => 'Product is not a combo'], 400);
+        }
+
+        $product_list_raw = array_filter(array_map('trim', explode(',', $combo->product_list ?? '')));
+        $variant_list = explode(',', $combo->variant_list ?? '');
+        $qty_list = array_map('floatval', explode(',', $combo->qty_list ?? ''));
+        $combo_unit_ids = explode(',', $combo->combo_unit_id ?? '');
+        $lims_warehouse_list = Warehouse::where('is_active', true)->get();
+
+        $ingredients = [];
+        foreach ($product_list_raw as $i => $item_id) {
+            $is_basement = (is_string($item_id) && strpos($item_id, 'b_') === 0);
+            $raw_id = $is_basement ? substr($item_id, 2) : ((is_string($item_id) && strpos($item_id, 'p_') === 0) ? substr($item_id, 2) : $item_id);
+            $item_id_int = (int) $raw_id;
+            if (!$item_id_int) continue;
+
+            $variant_id = isset($variant_list[$i]) ? (int) trim($variant_list[$i]) : null;
+            $qty = $qty_list[$i] ?? 1;
+            $unit_id = $combo_unit_ids[$i] ?? $combo->unit_id;
+            $unit = Unit::find($unit_id);
+            $unit_name = $unit ? $unit->unit_name : '';
+
+            if ($is_basement) {
+                $basement = Basement::find($item_id_int);
+                if (!$basement || !$basement->is_active) continue;
+                $name = $basement->name;
+                $code = $basement->code ?? '';
+                $avail_qty = (float) ($basement->qty ?? 0);
+                $ingredients[] = [
+                    'index' => $i,
+                    'item_key' => 'b_' . $item_id_int,
+                    'item_type' => 'warehouse_store',
+                    'product_id' => null,
+                    'basement_id' => $item_id_int,
+                    'variant_id' => null,
+                    'name' => $name,
+                    'code' => $code,
+                    'qty' => $qty,
+                    'unit_name' => $unit_name,
+                    'warehouse_qtys' => [['id' => 'basement', 'name' => __('db.Warehouse Store'), 'qty' => $avail_qty]],
+                ];
+            } else {
+                $ingredient_product = Product::find($item_id_int);
+                if (!$ingredient_product) continue;
+                $name = $ingredient_product->name;
+                $code = $ingredient_product->code ?? '';
+                if ($variant_id) {
+                    $pv = ProductVariant::where([['product_id', $item_id_int], ['variant_id', $variant_id]])->first();
+                    if ($pv) $code = $pv->item_code ?? $code;
+                }
+                $warehouse_qtys = [];
+                $query = Product_Warehouse::where('product_id', $item_id_int)
+                    ->selectRaw('warehouse_id, SUM(qty) as total_qty')
+                    ->groupBy('warehouse_id');
+                if ($variant_id) {
+                    $query->where('variant_id', $variant_id);
+                } else {
+                    $query->whereNull('variant_id');
+                }
+                foreach ($query->get() as $pw) {
+                    $wh = Warehouse::find($pw->warehouse_id);
+                    if ($wh && $pw->total_qty > 0) {
+                        $warehouse_qtys[] = ['id' => $wh->id, 'name' => $wh->name, 'qty' => (float) $pw->total_qty];
+                    }
+                }
+                $ingredients[] = [
+                    'index' => $i,
+                    'item_key' => 'p_' . $item_id_int,
+                    'item_type' => 'single',
+                    'product_id' => $item_id_int,
+                    'basement_id' => null,
+                    'variant_id' => $variant_id,
+                    'name' => $name,
+                    'code' => $code,
+                    'qty' => $qty,
+                    'unit_name' => $unit_name,
+                    'warehouse_qtys' => $warehouse_qtys,
+                ];
+            }
+        }
+
+        return response()->json([
+            'combo' => [
+                'id' => $combo->id,
+                'name' => $combo->name,
+                'code' => $combo->code,
+            ],
+            'ingredients' => $ingredients,
+            'warehouses' => $lims_warehouse_list->map(fn($w) => ['id' => $w->id, 'name' => $w->name]),
+        ]);
+    }
+
+    /**
+     * Process combo assembly: minus from ingredient warehouses (or Basement), plus to combo warehouse
+     */
+    public function comboAssemble(Request $request)
+    {
+        $request->validate([
+            'combo_product_id' => 'required|exists:products,id',
+            'combo_warehouse_id' => 'required|exists:warehouses,id',
+            'quantity' => 'required|numeric|min:0.001',
+            'ingredient_warehouse_id' => 'required|array',
+        ]);
+
+        $combo = Product::findOrFail($request->combo_product_id);
+        if ($combo->type != 'combo') {
+            return response()->json(['success' => false, 'message' => __('db.Invalid combo product')], 400);
+        }
+
+        $qty_to_assemble = (float) $request->quantity;
+        $combo_warehouse_id = (int) $request->combo_warehouse_id;
+        $ingredient_warehouses = $request->ingredient_warehouse_id ?? [];
+        $ingredient_qtys = $request->ingredient_qty ?? [];
+
+        $product_list_raw = array_filter(array_map('trim', explode(',', $combo->product_list ?? '')));
+        $variant_list = explode(',', $combo->variant_list ?? '');
+        $qty_list = array_map('floatval', explode(',', $combo->qty_list ?? ''));
+
+        DB::beginTransaction();
+        try {
+            foreach ($product_list_raw as $i => $item_id) {
+                $is_basement = (is_string($item_id) && strpos($item_id, 'b_') === 0);
+                $raw_id = $is_basement ? substr($item_id, 2) : ((is_string($item_id) && strpos($item_id, 'p_') === 0) ? substr($item_id, 2) : $item_id);
+                $item_id_int = (int) $raw_id;
+                if (!$item_id_int) continue;
+
+                $required_qty = (isset($ingredient_qtys[$i]) && is_numeric($ingredient_qtys[$i])) ? (float) $ingredient_qtys[$i] : (($qty_list[$i] ?? 1) * $qty_to_assemble);
+                $wh_val = $ingredient_warehouses[$i] ?? null;
+
+                if ($is_basement) {
+                    $basement = Basement::find($item_id_int);
+                    if (!$basement) continue;
+                    if (($basement->qty ?? 0) < $required_qty) {
+                        throw new \Exception(__('db.Insufficient stock for') . ' ' . $basement->name . '. ' . __('db.Required') . ': ' . $required_qty . ', ' . __('db.Available') . ': ' . ($basement->qty ?? 0));
+                    }
+                    $basement->qty -= $required_qty;
+                    $basement->save();
+                } else {
+                    $product_id = $item_id_int;
+                    $variant_id = isset($variant_list[$i]) ? (int) trim($variant_list[$i]) : null;
+                    $warehouse_id = is_numeric($wh_val) ? (int) $wh_val : 0;
+                    if (!$warehouse_id) {
+                        throw new \Exception(__('db.Please select warehouse for all ingredients'));
+                    }
+                    $total_available = Product_Warehouse::where('product_id', $product_id)
+                        ->where('warehouse_id', $warehouse_id);
+                    if ($variant_id) {
+                        $total_available->where('variant_id', $variant_id);
+                    } else {
+                        $total_available->whereNull('variant_id');
+                    }
+                    $total_available = $total_available->sum('qty');
+                    if ($total_available < $required_qty) {
+                        $p = Product::find($product_id);
+                        $name = $p ? $p->name : $product_id;
+                        throw new \Exception(__('db.Insufficient stock for') . ' ' . $name . '. ' . __('db.Required') . ': ' . $required_qty . ', ' . __('db.Available') . ': ' . $total_available);
+                    }
+                    $remaining = $required_qty;
+                    $pw_query = Product_Warehouse::where('product_id', $product_id)
+                        ->where('warehouse_id', $warehouse_id)
+                        ->where('qty', '>', 0);
+                    if ($variant_id) {
+                        $pw_query->where('variant_id', $variant_id);
+                    } else {
+                        $pw_query->whereNull('variant_id');
+                    }
+                    foreach ($pw_query->orderBy('id')->get() as $pw) {
+                        if ($remaining <= 0) break;
+                        $deduct = min($remaining, $pw->qty);
+                        $pw->qty -= $deduct;
+                        $pw->save();
+                        $remaining -= $deduct;
+                    }
+                    $child = Product::find($product_id);
+                    if ($child) {
+                        $child->qty -= $required_qty;
+                        $child->save();
+                    }
+                }
+            }
+
+            // Add combo to combo warehouse (with ProductBatch if expiry_date provided)
+            $expiry_date = $request->input('expiry_date');
+            $expiryForBatch = '2099-12-31';
+            if (!empty($expiry_date)) {
+                $dt = \DateTime::createFromFormat('d-m-Y', $expiry_date) ?: \DateTime::createFromFormat('Y-m-d', $expiry_date);
+                $expiryForBatch = $dt ? $dt->format('Y-m-d') : '2099-12-31';
+            }
+            $batch_no = 'COMBO-' . date('Ymd') . '-' . date('His');
+            $product_batch = ProductBatch::create([
+                'product_id' => $combo->id,
+                'batch_no' => $batch_no,
+                'expired_date' => $expiryForBatch,
+                'qty' => $qty_to_assemble,
+            ]);
+            Product_Warehouse::create([
+                'product_id' => $combo->id,
+                'warehouse_id' => $combo_warehouse_id,
+                'product_batch_id' => $product_batch->id,
+                'qty' => $qty_to_assemble,
+            ]);
+
+            $combo->qty = ($combo->qty ?? 0) + $qty_to_assemble;
+            $combo->save();
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => __('db.Combo assembled successfully')]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
     }
 
     public function printBarcode(Request $request)

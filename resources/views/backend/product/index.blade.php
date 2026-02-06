@@ -309,6 +309,91 @@
         </div>
     </div>
 
+    @if(isset($product_index_type) && $product_index_type == 'combo')
+    <style>
+        #combo-assemble-modal .modal-dialog { max-width: 1000px; }
+        #combo-assemble-modal .modal-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; padding: 1rem 1.25rem; }
+        #combo-assemble-modal .modal-header .modal-title { font-weight: 600; font-size: 1.1rem; }
+        #combo-assemble-modal .modal-header .close { color: #fff; opacity: 0.9; text-shadow: none; }
+        #combo-assemble-modal .modal-body { padding: 1.5rem 1.25rem; }
+        #combo-assemble-modal .combo-assemble-section { background: #f8f9fa; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+        #combo-assemble-modal .combo-assemble-section label { font-weight: 600; font-size: 0.85rem; color: #495057; margin-bottom: 0.4rem; }
+        #combo-assemble-modal .qty-stepper { display: flex; align-items: center; border: 1px solid #ced4da; border-radius: 6px; overflow: hidden; }
+        #combo-assemble-modal .qty-stepper .btn-qty { width: 38px; height: 38px; border: none; background: #e9ecef; color: #495057; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+        #combo-assemble-modal .qty-stepper .btn-qty:hover { background: #dee2e6; }
+        #combo-assemble-modal .qty-stepper input { width: 60px; text-align: center; border: none; border-left: 1px solid #ced4da; border-right: 1px solid #ced4da; font-weight: 600; }
+        #combo-assemble-modal .ingredients-table { border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+        #combo-assemble-modal .ingredients-table thead { background: #495057; color: #fff; }
+        #combo-assemble-modal .ingredients-table thead th { border: none; padding: 0.75rem 1rem; font-size: 0.85rem; font-weight: 600; }
+        #combo-assemble-modal .ingredients-table tbody td { padding: 0.65rem 1rem; vertical-align: middle; }
+        #combo-assemble-modal .modal-footer-custom { padding-top: 1rem; border-top: 1px solid #e9ecef; display: flex; gap: 0.5rem; justify-content: flex-end; }
+    </style>
+    <div id="combo-assemble-modal" tabindex="-1" role="dialog" class="modal fade text-left">
+        <div role="document" class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="dripicons-plus"></i> {{ __('db.Assemble Combo') }}</h5>
+                    <button type="button" class="close" data-dismiss="modal"><span><i class="dripicons-cross"></i></span></button>
+                </div>
+                <div class="modal-body">
+                    <div id="combo-assemble-loading" class="text-center py-5">
+                        <span class="spinner-border text-primary"></span>
+                        <p class="mt-2 mb-0 text-muted">{{ __('db.Loading') }}...</p>
+                    </div>
+                    <div id="combo-assemble-form" style="display:none;">
+                        <input type="hidden" id="combo_assemble_product_id" value="">
+                        <div class="combo-assemble-section">
+                            <p class="mb-3 font-weight-bold text-dark" id="combo-assemble-name"></p>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label>{{ __('db.Combo Warehouse') }} *</label>
+                                    <select id="combo_warehouse_id" class="form-control selectpicker" data-live-search="true" required>
+                                        <option value="">{{ __('db.Select Warehouse') }}</option>
+                                        @foreach($lims_warehouse_list ?? [] as $w)
+                                            <option value="{{ $w->id }}">{{ $w->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label>{{ __('db.Quantity') }} *</label>
+                                    <div class="qty-stepper">
+                                        <button type="button" class="btn-qty" id="combo_qty_minus" title="Decrease"><i class="dripicons-minus"></i></button>
+                                        <input type="number" id="combo_assemble_qty" min="0.001" step="any" value="1" required>
+                                        <button type="button" class="btn-qty" id="combo_qty_plus" title="Increase"><i class="dripicons-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label>{{ __('db.Expiry Date') }}</label>
+                                    <input type="text" id="combo_assemble_expiry" class="form-control date" placeholder="dd-mm-yyyy" autocomplete="off">
+                                </div>
+                            </div>
+                        </div>
+                        <label class="font-weight-bold text-dark mb-2">{{ __('db.Ingredient List') }}</label>
+                        <div class="table-responsive ingredients-table-wrapper">
+                            <table class="table table-bordered ingredients-table">
+                                <thead>
+                                    <tr>
+                                        <th>{{ __('db.product') }}</th>
+                                        <th>{{ __('db.Warehouse') }}</th>
+                                        <th>{{ __('db.Quantity') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="combo-assemble-ingredients-tbody">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="combo-assemble-error" class="alert alert-danger mt-2" style="display:none;"></div>
+                        <div class="modal-footer-custom">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">{{ __('db.Cancel') }}</button>
+                            <button type="button" id="combo-assemble-submit" class="btn btn-primary"><i class="dripicons-plus"></i> {{ __('db.Assemble') }}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
 @endsection
 @push('scripts')
     <script>
@@ -420,6 +505,150 @@
             // console.log(product);
             productDetails(product, imagedata);
         });
+
+        @if(isset($product_index_type) && $product_index_type == 'combo')
+        $(document).on("click", ".btn-assemble-combo", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var product = $(this).closest('tr').data('product');
+            if (!product || !product[13]) return;
+            var productId = product[13];
+            $('#combo-assemble-modal').modal('show');
+            $('#combo-assemble-loading').show();
+            $('#combo-assemble-form').hide();
+            $('#combo-assemble-error').hide();
+            $('#combo_assemble_product_id').val(productId);
+            $.get("{{ url('products/combo-ingredients') }}/" + productId)
+                .done(function(data) {
+                    $('#combo-assemble-name').text((data.combo.name || '') + ' [' + (data.combo.code || '') + ']');
+                    $('#combo_assemble_qty').val(1);
+                    var tbody = $('#combo-assemble-ingredients-tbody');
+                    tbody.empty();
+                    data.ingredients.forEach(function(ing, i) {
+                        var whOpts = '<option value="">{{ __("db.Select Warehouse") }}</option>';
+                        (ing.warehouse_qtys || []).forEach(function(w) {
+                            whOpts += '<option value="' + w.id + '" data-qty="' + w.qty + '">' + w.name + ' ({{ __("db.Available") }}: ' + w.qty + ')</option>';
+                        });
+                        var baseQty = parseFloat(ing.qty) || 1;
+                        var unit = ing.unit_name || '';
+                        var badge = (ing.item_type === 'warehouse_store') ? ' <span class="badge badge-info">{{ __("db.Warehouse Store") }}</span>' : ' <span class="badge badge-primary">{{ __("db.Single Product") }}</span>';
+                        var qtyCell = '<td><div class="input-group" style="max-width: 140px">' +
+                            '<input type="number" class="form-control ingredient-qty-input" name="ingredient_qty[' + ing.index + ']" data-qty="' + baseQty + '" value="' + baseQty + '" step="any" min="0" placeholder="Qty">' +
+                            '<div class="input-group-append"><span class="input-group-text">' + unit + '</span></div></div></td>';
+                        var row = '<tr data-index="' + ing.index + '" data-item-type="' + (ing.item_type || 'single') + '">' +
+                            '<td>' + ing.name + ' [' + (ing.code || '') + ']' + badge + '</td>' +
+                            '<td><select class="form-control ingredient-warehouse-select" name="ingredient_warehouse_id[' + ing.index + ']" data-live-search="true" required>' + whOpts + '</select></td>' +
+                            qtyCell +
+                            '</tr>';
+                        tbody.append(row);
+                    });
+                    $('#combo_warehouse_id').selectpicker('refresh');
+                    $('.ingredient-warehouse-select').selectpicker('refresh');
+                    $('#combo-assemble-loading').hide();
+                    $('#combo-assemble-form').show();
+                    $('#combo_assemble_expiry').val('');
+                    if ($('#combo_assemble_expiry').hasClass('hasDatepicker')) {
+                        $('#combo_assemble_expiry').datepicker('destroy');
+                    }
+                    $('#combo_assemble_expiry').datepicker({ format: 'dd-mm-yyyy', autoclose: true, todayHighlight: true });
+                    updateComboIngredientQtys();
+                })
+                .fail(function(xhr) {
+                    $('#combo-assemble-loading').hide();
+                    $('#combo-assemble-form').show();
+                    $('#combo-assemble-error').text(xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : '{{ __("db.Error loading data") }}').show();
+                });
+        });
+        function updateComboIngredientQtys() {
+            var qty = parseFloat($('#combo_assemble_qty').val()) || 1;
+            $('#combo-assemble-ingredients-tbody tr').each(function() {
+                var baseQty = parseFloat($(this).find('.ingredient-qty-input').data('qty')) || 0;
+                $(this).find('.ingredient-qty-input').val((baseQty * qty).toFixed(4));
+            });
+        }
+        $('#combo_assemble_qty').on('input change', function() { updateComboIngredientQtys(); });
+        $('#combo_qty_plus').on('click', function() {
+            var inp = $('#combo_assemble_qty');
+            var v = parseFloat(inp.val()) || 0;
+            inp.val(v + 1);
+            updateComboIngredientQtys();
+        });
+        $('#combo_qty_minus').on('click', function() {
+            var inp = $('#combo_assemble_qty');
+            var v = Math.max(0.001, (parseFloat(inp.val()) || 1) - 1);
+            inp.val(v);
+            updateComboIngredientQtys();
+        });
+        $('#combo-assemble-submit').on('click', function() {
+            var productId = $('#combo_assemble_product_id').val();
+            var comboWh = $('#combo_warehouse_id').val();
+            var qty = $('#combo_assemble_qty').val();
+            var ingWh = {};
+            var ingQty = {};
+            $('#combo-assemble-ingredients-tbody .ingredient-warehouse-select').each(function() {
+                var name = $(this).attr('name');
+                if (name) {
+                    var idx = name.match(/\[(\d+)\]/);
+                    if (idx) ingWh[idx[1]] = $(this).val();
+                }
+            });
+            $('#combo-assemble-ingredients-tbody .ingredient-qty-input').each(function() {
+                var name = $(this).attr('name');
+                if (name) {
+                    var idx = name.match(/\[(\d+)\]/);
+                    if (idx) ingQty[idx[1]] = $(this).val();
+                }
+            });
+            if (!comboWh || !qty || qty <= 0) {
+                $('#combo-assemble-error').text('{{ __("db.Please fill all required fields") }}').show();
+                return;
+            }
+            var allSelected = true;
+            $('#combo-assemble-ingredients-tbody .ingredient-warehouse-select').each(function() {
+                if (!$(this).val()) allSelected = false;
+            });
+            if (!allSelected) {
+                $('#combo-assemble-error').text('{{ __("db.Please select warehouse for all ingredients") }}').show();
+                return;
+            }
+            $('#combo-assemble-error').hide();
+            var btn = $(this);
+            btn.prop('disabled', true);
+            var expiryVal = $('#combo_assemble_expiry').val() || '';
+            $.ajax({
+                url: "{{ route('product.combo.assemble') }}",
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    combo_product_id: productId,
+                    combo_warehouse_id: comboWh,
+                    quantity: qty,
+                    expiry_date: expiryVal,
+                    ingredient_warehouse_id: ingWh,
+                    ingredient_qty: ingQty
+                }
+            }).done(function(res) {
+                if (res.success) {
+                    $('#combo-assemble-modal').modal('hide');
+                    $('#product-data-table').DataTable().ajax.reload();
+                    alert(res.message || '{{ __("db.Combo assembled successfully") }}');
+                } else {
+                    $('#combo-assemble-error').text(res.message || '{{ __("db.Error") }}').show();
+                }
+            }).fail(function(xhr) {
+                var msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : '{{ __("db.Error") }}';
+                $('#combo-assemble-error').text(msg).show();
+            }).always(function() {
+                btn.prop('disabled', false);
+            });
+        });
+        $('#combo-assemble-modal').on('shown.bs.modal', function() {
+            $('.selectpicker').selectpicker('refresh');
+        });
+        $('#combo-assemble-modal').on('hidden.bs.modal', function() {
+            $('#combo-assemble-ingredients-tbody').empty();
+        });
+        @endif
 
         $("#print-btn").on("click", function() {
             var divToPrint = document.getElementById('product-details');
@@ -582,35 +811,22 @@
                     qty = data.product_warehouse[1];
                     batch = data.product_warehouse[2];
                     expired_date = data.product_warehouse[3];
-                    imei_numbers = data.product_warehouse[4];
-                    // console.log(imei_numbers, 'hi imei');
+                    unit_cost = data.product_warehouse[4];
                     var newHead = $("<thead>");
                     var newBody = $("<tbody>"); 
                     var newRow = $("<tr>");
-                    var productQty = 0;
                     newRow.append(
-                        '<th>{{ __('db.Warehouse') }}</th><th>{{ __('db.Batch No') }}</th><th>{{ __('db.Expired Date') }}</th><th>{{ __('db.Quantity') }}</th><th>{{ __('db.IMEI or Serial Numbers') }}</th>'
+                        '<th>{{ __('db.Warehouse') }}</th><th>{{ __('db.Batch No') }}</th><th>{{ __('db.Expired Date') }}</th><th>{{ __('db.Quantity') }}</th><th>{{ __('db.Unit Cost') }}</th>'
                     );
                     newHead.append(newRow);
                     $.each(warehouse, function(index) {
-                        // productQty += qty[index];
                         var newRow = $("<tr>");
                         var cols = '';
                         cols += '<td>' + warehouse[index] + '</td>';
                         cols += '<td>' + batch[index] + '</td>';
                         cols += '<td>' + expired_date[index] + '</td>';
                         cols += '<td>' + qty[index] + '</td>';
-                        // console.log(imei_numbers);
-                        if (imei_numbers.length <= index) {
-                            cols +=
-                                '<td style="max-height: 100px; overflow-y: auto; word-break: break-word; white-space: normal; display: block; padding-right: 10px;">' +
-                                'N/A' + '</td>';
-                        } else {
-                            cols +=
-                                '<td style="max-height: 100px; overflow-y: auto; word-break: break-word; white-space: normal; display: block; padding-right: 10px;">' +
-                                imei_numbers[index].split(',').join(",<br/>") + '</td>';
-                        }
-
+                        cols += '<td>' + (unit_cost[index] || 'N/A') + '</td>';
                         newRow.append(cols);
                         newBody.append(newRow);
                     });
@@ -624,7 +840,7 @@
                     var newBody = $("<tbody>");
                     var newRow = $("<tr>");
                     newRow.append(
-                        '<th>{{ __('db.Warehouse') }}</th><th>{{ __('db.Batch No') }}</th><th>{{ __('db.Expired Date') }}</th><th>{{ __('db.Quantity') }}</th><th>{{ __('db.IMEI or Serial Numbers') }}</th>'
+                        '<th>{{ __('db.Warehouse') }}</th><th>{{ __('db.Batch No') }}</th><th>{{ __('db.Expired Date') }}</th><th>{{ __('db.Quantity') }}</th><th>{{ __('db.Unit Cost') }}</th>'
                     );
                     newHead.append(newRow);
                     var emptyRow = $("<tr>");
@@ -667,7 +883,7 @@
                 var newBody = $("<tbody>");
                 var newRow = $("<tr>");
                 newRow.append(
-                    '<th>{{ __('db.Warehouse') }}</th><th>{{ __('db.Batch No') }}</th><th>{{ __('db.Expired Date') }}</th><th>{{ __('db.Quantity') }}</th><th>{{ __('db.IMEI or Serial Numbers') }}</th>'
+                    '<th>{{ __('db.Warehouse') }}</th><th>{{ __('db.Batch No') }}</th><th>{{ __('db.Expired Date') }}</th><th>{{ __('db.Quantity') }}</th><th>{{ __('db.Unit Cost') }}</th>'
                 );
                 newHead.append(newRow);
                 var errorRow = $("<tr>");

@@ -91,21 +91,6 @@
                                             <input type="text" name="expiry_date" id="expiry_date" class="form-control" placeholder="dd-mm-yyyy" />
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label>Production Overhead Type</label>
-                                            <select name="production_overhead_type" id="production_overhead_type" class="form-control">
-                                                <option value="fixed">Fixed Amount</option>
-                                                <option value="percent">Percentage (%)</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group">
-                                            <label>Production Overhead</label>
-                                            <input type="number" name="production_overhead_cost" id="production_overhead_cost" class="form-control production_overhead_cost" value="0" min="0" step="any" placeholder="100 or 20" />
-                                        </div>
-                                    </div>
                                 </div>
                             <div class="row">
                                 <div id="digital" class="col-md-4">
@@ -140,17 +125,22 @@
                                     </div>
                                 </div>
 
-
-
                                     <div class="col-md-4">
                                         <div class="form-group">
-                                            <label> {{__('db.Production Cost')}} </label>
-                                            <input type="number" name="production_cost" class="form-control production_cost" value="0" step="any" />
+                                            <label>Production Overhead Type</label>
+                                            <select name="production_overhead_type" id="production_overhead_type" class="form-control">
+                                                <option value="fixed" selected>Fixed Amount</option>
+                                                <option value="percent">Percentage (%)</option>
+                                            </select>
                                         </div>
                                     </div>
-
-
-
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>{{__('db.Production Cost')}}</label>
+                                            <input type="number" name="production_cost" id="production_cost_input" class="form-control production_cost" value="0" min="0" step="any" placeholder="Enter amount or %" />
+                                            <small class="text-muted production-cost-hint">Enter fixed amount</small>
+                                        </div>
+                                    </div>
                                     <div class="col-md-4">
                                         <div class="form-group">
                                             <label>{{__('db.Shipping Cost')}}</label>
@@ -1094,7 +1084,15 @@
     $('.shipping_cost').on('input',function(){
         calculate_price();
     })
-    $('.production_overhead_cost, #production_overhead_type').on('input change',function(){
+    $('#production_overhead_type').on('change',function(){
+        var type = $(this).val();
+        if (type === 'percent') {
+            $('.production-cost-hint').text('Enter percentage (e.g. 10 for 10%)');
+            $('#production_cost_input').attr('placeholder', 'Enter %');
+        } else {
+            $('.production-cost-hint').text('Enter fixed amount');
+            $('#production_cost_input').attr('placeholder', 'Enter amount');
+        }
         calculate_price();
     })
     $('#expiry_date').datepicker({
@@ -1179,23 +1177,19 @@
             $('.submit-btn').prop('disabled', true);
         }
 
-        let production_cost = parseFloat($('.production_cost').val()) || 0;
+        let production_cost_input = parseFloat($('.production_cost').val()) || 0;
         let shipping_cost = parseFloat($('.shipping_cost').val()) || 0;
-        let overhead_value = parseFloat($('.production_overhead_cost').val()) || 0;
         let overhead_type = $('#production_overhead_type').val();
-        let overhead_cost = 0;
+        let production_cost = 0;
         if (overhead_type === 'fixed') {
-            overhead_cost = overhead_value;
+            production_cost = production_cost_input;
         } else if (overhead_type === 'percent') {
-            overhead_cost = (price * overhead_value) / 100;
+            production_cost = (price * production_cost_input) / 100;
         }
-
-        let base_total = price + shipping_cost + production_cost;
-        grand_total = base_total + overhead_cost;
+        grand_total = price + production_cost + shipping_cost;
 
         $('#shipping_cost').html(shipping_cost.toFixed(2));
         $('#production_cost').html(production_cost.toFixed(2));
-        $('#overhead_cost').html(overhead_cost.toFixed(2));
         $('#total').html(price.toFixed(2));
         $('.total_cost').val(price.toFixed(2));
         $('#grand_total').html(grand_total.toFixed(2));

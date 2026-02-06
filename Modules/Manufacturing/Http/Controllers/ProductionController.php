@@ -10,6 +10,7 @@ use App\Models\Warehouse;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Product_Warehouse;
+use App\Models\ProductBatch;
 use App\Models\Unit;
 use App\Models\RawMaterial;
 use Modules\Manufacturing\Entities\Production;
@@ -90,10 +91,10 @@ class ProductionController extends Controller
         $orderCol = $request->input('order.0.column', 1);
         $orderCol = isset($columns[$orderCol]) ? $orderCol : 1;
         $order = 'productions.'.$columns[$orderCol];
-        $dir = in_array(strtolower($request->input('order.0.dir', 'asc')), ['asc', 'desc']) ? $request->input('order.0.dir') : 'asc';
+        $dir = in_array(strtolower($request->input('order.0.dir', 'desc')), ['asc', 'desc']) ? $request->input('order.0.dir') : 'desc';
 
         if(empty($request->input('search.value'))) {
-            $q = Production::with('user', 'warehouse')
+            $q = Production::with('user', 'warehouse', 'product')
                 ->whereDate('created_at', '>=' ,$request->input('starting_date'))
                 ->whereDate('created_at', '<=' ,$request->input('ending_date'))
                 ->offset($start)
@@ -205,7 +206,7 @@ class ProductionController extends Controller
                     $user ? $user->email : '',
                     $production->document ?? '',
                     $production->batch_lot_number ?? '',
-                    $production->expiry_date ? $production->expiry_date->format(config('date_format')) : '',
+                    $production->expiry_date ? \Carbon\Carbon::parse($production->expiry_date)->format(config('date_format')) : '',
                 ];
                 $data[] = $nestedData;
             }
@@ -216,7 +217,7 @@ class ProductionController extends Controller
             "recordsFiltered" => intval($totalFiltered),
             "data"            => $data
         );
-        echo json_encode($json_data);
+        return response()->json($json_data);
     }
 
 
@@ -233,7 +234,8 @@ class ProductionController extends Controller
         }
         $lims_product_list = Product::where([
             ['is_recipe', 1],
-            ['is_active', true]
+            ['is_active', true],
+            ['type', 'standard']
         ])->get();
         $lims_tax_list = Tax::where('is_active', true)->get();
         $lims_product_list_without_variant = $this->productWithoutVariant();
@@ -293,7 +295,15 @@ class ProductionController extends Controller
             $data['expiry_date'] = null;
         }
         $data['production_overhead_type'] = $data['production_overhead_type'] ?? 'fixed';
-        $data['production_overhead_cost'] = $data['production_overhead_cost'] ?? 0;
+        $total_cost = (float)($request->total_cost ?? 0);
+        $production_cost_input = (float)($request->production_cost ?? 0);
+        if (($data['production_overhead_type'] ?? 'fixed') === 'percent') {
+            $data['production_cost'] = round($total_cost * $production_cost_input / 100, 2);
+        } else {
+            $data['production_cost'] = $production_cost_input;
+        }
+        $data['production_overhead_cost'] = $production_cost_input;
+        $data['grand_total'] = $total_cost + $data['production_cost'] + (float)($request->shipping_cost ?? 0);
         $data['item'] = count($request->product_qty);
         $data['total_qty'] = $request->total_qty ?? 1;
         $data['product_list'] = implode(",", $data['product_list']);
@@ -312,24 +322,20 @@ class ProductionController extends Controller
         $product->qty += $request->total_qty;
         $product->save();
 
-        // wherehouse stock
-        $lims_product_warehouse = Product_Warehouse::query()
-            ->where([
-                ['product_id', $request->product_id],
-                ['warehouse_id', $request->warehouse_id]
-            ])
-            ->latest()
-            ->first();
-        if($lims_product_warehouse){
-            $lims_product_warehouse->qty = $lims_product_warehouse->qty + $request->total_qty;
-            $lims_product_warehouse->save();
-        }else{
-            $lims_product_warehouse = new Product_Warehouse();
-            $lims_product_warehouse->product_id = $request->product_id;
-            $lims_product_warehouse->warehouse_id = $request->warehouse_id;
-            $lims_product_warehouse->qty = $request->total_qty;
-            $lims_product_warehouse->save();
-        }
+        // warehouse stock - create ProductBatch and Product_Warehouse with batch_lot_number for batch-wise tracking
+        $expiryForBatch = !empty($data['expiry_date']) ? $data['expiry_date'] : '2099-12-31';
+        $product_batch = ProductBatch::create([
+            'product_id' => $request->product_id,
+            'batch_no' => $data['batch_lot_number'],
+            'expired_date' => $expiryForBatch,
+            'qty' => $request->total_qty,
+        ]);
+        Product_Warehouse::create([
+            'product_id' => $request->product_id,
+            'warehouse_id' => $request->warehouse_id,
+            'product_batch_id' => $product_batch->id,
+            'qty' => $request->total_qty,
+        ]);
 
 
         $product_id = $request->product_list;
@@ -657,7 +663,12 @@ class ProductionController extends Controller
         } else {
             $lims_warehouse_list = Warehouse::where('is_active', true)->get();
         }
-        return view('manufacturing::production.edit', compact('lims_production_data', 'lims_warehouse_list'));
+        $lims_product_list = Product::where([
+            ['is_recipe', 1],
+            ['is_active', true],
+            ['type', 'standard']
+        ])->get();
+        return view('manufacturing::production.edit', compact('lims_production_data', 'lims_warehouse_list', 'lims_product_list'));
     }
 
     public function update(Request $request, $id)
@@ -665,7 +676,7 @@ class ProductionController extends Controller
         $lims_production_data = Production::findOrFail($id);
         $data = $request->only([
             'created_at', 'warehouse_id', 'production_cost', 'shipping_cost', 'note',
-            'production_overhead_type', 'production_overhead_cost', 'expiry_date'
+            'production_overhead_type', 'expiry_date'
         ]);
         if (isset($data['created_at'])) {
             $data['created_at'] = date("Y-m-d H:i:s", strtotime($data['created_at']));
@@ -676,14 +687,15 @@ class ProductionController extends Controller
         } else {
             $data['expiry_date'] = null;
         }
-        $overhead = 0;
         $baseTotal = (float)($lims_production_data->total_cost ?? 0);
+        $production_cost_input = (float)($request->production_cost ?? 0);
+        $data['production_overhead_cost'] = $production_cost_input;
         if (($data['production_overhead_type'] ?? 'fixed') === 'percent') {
-            $overhead = $baseTotal * (float)($data['production_overhead_cost'] ?? 0) / 100;
+            $data['production_cost'] = round($baseTotal * $production_cost_input / 100, 2);
         } else {
-            $overhead = (float)($data['production_overhead_cost'] ?? 0);
+            $data['production_cost'] = $production_cost_input;
         }
-        $data['grand_total'] = $baseTotal + (float)($data['production_cost'] ?? 0) + (float)($data['shipping_cost'] ?? 0) + $overhead;
+        $data['grand_total'] = $baseTotal + $data['production_cost'] + (float)($request->shipping_cost ?? 0);
         if ($request->hasFile('document')) {
             $v = Validator::make(
                 ['extension' => strtolower($request->document->getClientOriginalExtension())],
@@ -700,27 +712,17 @@ class ProductionController extends Controller
             }
         }
         if (isset($data['warehouse_id']) && $data['warehouse_id'] != $lims_production_data->warehouse_id) {
-            $old_pw = Product_Warehouse::where([
+            // Batch-wise: find Product_Warehouse by batch_lot_number and move to new warehouse
+            $product_batch = ProductBatch::where([
                 ['product_id', $lims_production_data->product_id],
-                ['warehouse_id', $lims_production_data->warehouse_id]
+                ['batch_no', $lims_production_data->batch_lot_number]
             ])->first();
-            if ($old_pw) {
-                $old_pw->qty -= $lims_production_data->total_qty;
-                $old_pw->save();
-            }
-            $new_pw = Product_Warehouse::where([
-                ['product_id', $lims_production_data->product_id],
-                ['warehouse_id', $data['warehouse_id']]
-            ])->first();
-            if ($new_pw) {
-                $new_pw->qty += $lims_production_data->total_qty;
-                $new_pw->save();
-            } else {
-                Product_Warehouse::create([
-                    'product_id' => $lims_production_data->product_id,
-                    'warehouse_id' => $data['warehouse_id'],
-                    'qty' => $lims_production_data->total_qty
-                ]);
+            if ($product_batch) {
+                $old_pw = Product_Warehouse::where('product_batch_id', $product_batch->id)->first();
+                if ($old_pw) {
+                    $old_pw->warehouse_id = $data['warehouse_id'];
+                    $old_pw->save();
+                }
             }
         }
         $lims_production_data->update($data);
@@ -745,13 +747,25 @@ class ProductionController extends Controller
                 $product->qty -= $lims_production_data->total_qty;
                 $product->save();
             }
-            $lims_product_warehouse = Product_Warehouse::where([
+            // Reverse batch-wise: find ProductBatch by batch_lot_number, then Product_Warehouse
+            $product_batch = ProductBatch::where([
                 ['product_id', $lims_production_data->product_id],
-                ['warehouse_id', $lims_production_data->warehouse_id]
+                ['batch_no', $lims_production_data->batch_lot_number]
             ])->first();
-            if ($lims_product_warehouse) {
-                $lims_product_warehouse->qty -= $lims_production_data->total_qty;
-                $lims_product_warehouse->save();
+            if ($product_batch) {
+                $lims_product_warehouse = Product_Warehouse::where('product_batch_id', $product_batch->id)->first();
+                if ($lims_product_warehouse) {
+                    $lims_product_warehouse->qty -= $lims_production_data->total_qty;
+                    if ($lims_product_warehouse->qty < 0) {
+                        $lims_product_warehouse->qty = 0;
+                    }
+                    $lims_product_warehouse->save();
+                }
+                $product_batch->qty -= $lims_production_data->total_qty;
+                if ($product_batch->qty < 0) {
+                    $product_batch->qty = 0;
+                }
+                $product_batch->save();
             }
             $product_list = array_filter(explode(",", $lims_production_data->product_list ?? ''));
             $qty_list = explode(",", $lims_production_data->qty_list ?? '');
