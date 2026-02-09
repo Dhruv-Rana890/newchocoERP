@@ -10127,6 +10127,26 @@ return array(
         'key' => 'Select Tray or Box',
         'value' => 'Please select Tray or Box',
     ),
+    array(
+        'locale' => 'en',
+        'key' => 'please_create_boxes_category',
+        'value' => 'Please create Boxes category and add products under it',
+    ),
+    array(
+        'locale' => 'en',
+        'key' => 'please_create_empty_tray_category',
+        'value' => 'Please create Empty Tray category and add products under it',
+    ),
+    array(
+        'locale' => 'en',
+        'key' => 'please_create_customer_tray_category',
+        'value' => 'Please create Customer Tray category and add products under it',
+    ),
+    array(
+        'locale' => 'en',
+        'key' => 'Please select a Tray or Box row first',
+        'value' => 'Please select a Tray or Box row first',
+    ),
     1703 =>
     array(
         'locale' => 'en',

@@ -8509,4 +8509,19 @@ return array (
     'key' => 'Served By',
     'value' => 'Served By',
   ),
+  array (
+    'locale' => 'id',
+    'key' => 'please_create_boxes_category',
+    'value' => 'Please create Boxes category and add products under it',
+  ),
+  array (
+    'locale' => 'id',
+    'key' => 'please_create_empty_tray_category',
+    'value' => 'Please create Empty Tray category and add products under it',
+  ),
+  array (
+    'locale' => 'id',
+    'key' => 'please_create_customer_tray_category',
+    'value' => 'Please create Customer Tray category and add products under it',
+  ),
 );

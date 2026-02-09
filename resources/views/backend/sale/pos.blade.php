@@ -670,12 +670,18 @@
                                     <div class="d-flex flex-wrap gap-2 align-items-center">
                                         @if(!empty($pos_boxes_category_id))
                                         <a href="javascript:void(0);" class="btn btn-outline-secondary btn-sm customize_type" data-customize-type-id="{{ $pos_boxes_category_id }}">BOXES</a>
+                                        @else
+                                        <span class="badge badge-warning text-dark">{{ __('db.please_create_boxes_category') }}</span>
                                         @endif
                                         @if(!empty($pos_empty_tray_category_id))
                                         <a href="javascript:void(0);" class="btn btn-outline-secondary btn-sm customize_type" data-customize-type-id="{{ $pos_empty_tray_category_id }}">EMPTY TRAY</a>
+                                        @else
+                                        <span class="badge badge-warning text-dark">{{ __('db.please_create_empty_tray_category') }}</span>
                                         @endif
                                         @if(!empty($pos_customer_tray_category_id))
                                         <a href="javascript:void(0);" class="btn btn-outline-secondary btn-sm customize_type customize_type_static" data-customize-type-id="{{ $pos_customer_tray_category_id }}">Customer Tray</a>
+                                        @else
+                                        <span class="badge badge-warning text-dark">{{ __('db.please_create_customer_tray_category') }}</span>
                                         @endif
                                     </div>
                                     <input type="hidden" id="customize_type" name="customize_type" value="" />
@@ -2935,12 +2941,6 @@
                 $('#customizetypebox').show();
             }
 
-            //Get single products on page load
-            currentFilterType = 'product';
-            $.get('{{ url('sales/getproducts') }}/' + warehouse_id + '/product/0', function(response) {
-                populateProduct(response);
-            });
-
             let typingTimer;
 
             function searchProducts(search) {
@@ -3305,6 +3305,11 @@
                 isCashRegisterAvailable(warehouse_id);
             @endif
 
+            //Get single products on page load (must run in this script block where populateProduct is defined)
+            currentFilterType = 'product';
+            $.get('{{ url('sales/getproducts') }}/' + warehouse_id + '/product/0', function(response) {
+                populateProduct(response);
+            });
 
             //Get recents sale when clicking recent transaction button
             $.get('{{ url('sales/recent-sale') }}', function(data) {
@@ -3632,6 +3637,9 @@
         });
 
         $(document).on('click', '.product-img', function() {
+            // Customize grid products are handled by .customize-grid-product only — avoid duplicate add
+            if ($(this).hasClass('customize-grid-product')) return;
+
             playSound();
 
             clearResults();
@@ -3699,8 +3707,29 @@
             var item_code = productInput.code;
             var pre_qty = 0;
             var flag = true;
+            // In customize mode: only merge qty if same product exists in the SELECTED radio's group (that box/tray)
+            var selectedParentRowIndices = [];
+            var isCustomizeParentProduct = (productInput.is_customize_parent == 1 || productInput.is_customize_parent === true);
+            if ($('#order_type').val() == '2') {
+                var $tbody = $("table.order-list tbody");
+                var $rows = $tbody.find('tr');
+                var $selectedParent = $rows.has('.customize-parent-radio:checked');
+                if ($selectedParent.length) {
+                    var idx = $rows.index($selectedParent.first());
+                    for (var r = idx; r < $rows.length; r++) {
+                        selectedParentRowIndices.push(r);
+                        if (r > idx && $rows.eq(r).find('.customize-parent-radio').length) break;
+                    }
+                }
+                if (!isCustomizeParentProduct && selectedParentRowIndices.length === 0) {
+                    alert('{{ __("db.Please select a Tray or Box row first") }}');
+                    return;
+                }
+            }
             $(".product-code").each(function(i) {
                 if ($(this).val().trim() == item_code) {
+                    if ($('#order_type').val() == '2' && selectedParentRowIndices.length > 0 && selectedParentRowIndices.indexOf(i) === -1)
+                        return;
                     rowindex = i;
                     if (productInput.imei != 'null' && productInput.imei != '') {
                         imeiNumbers = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ') .imei-number')
@@ -3810,10 +3839,11 @@
             $('#installmentPlanBtn').removeAttr('disabled');
             var orderType2 = ($('#order_type').val() == '2');
             if (orderType2 && isParentRow) customizeParentCounter++;
-            // Customize type box: show name + 1, 2, 3 so same product can be distinguished
+            // Customize type box: show name + 1, 2, 3 so same product can be distinguished (first = 1, second = 2, etc.)
             var displayName = data[0];
-            if (orderType2 && isParentRow && typeof instanceNumber !== 'undefined' && instanceNumber > 0) {
-                displayName = data[0] + ' ' + instanceNumber;
+            if (orderType2 && isParentRow) {
+                var num = (typeof instanceNumber !== 'undefined' && instanceNumber > 0) ? instanceNumber : customizeParentCounter;
+                displayName = data[0] + ' ' + num;
             }
             // Cap qty at in-stock when product has stock limit (no IMEI)
             var maxStock = parseFloat(data[19]);
@@ -3874,27 +3904,25 @@
 
             cols += '</td>';
             cols += '<td class="col-sm-2 product-price d-none d-md-block"></td>';
-            cols += '<td class="col-sm-2" style="min-width:140px"><div class="input-group"><span class="input-group-btn">';
+            cols += '<td class="col-sm-2" style="min-width:140px"><div class="input-group flex-nowrap">';
 
             // Show minus button if no IMEI (for all product types including raw_material and warehouse_store)
             if (!data[18] || data[18] == 'null' || data[18] == '0' || data[18] == 0 || data[18] === '' || (data[20] && (data[20].trim() == 'raw_material' || data[20].trim() == 'warehouse_store'))) {
-                cols +=
-                    '<button type="button" class="btn btn-default minus mr-1" style="padding:5px"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" /></svg></button>';
+                cols += '<div class="input-group-prepend"><button type="button" class="btn btn-outline-secondary minus" style="padding:5px 10px"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" /></svg></button></div>';
             }
 
             // Input field
-            cols += '<input type="text" name="qty[]" class="form-control qty numkey input-number" step="any" value="' +
-                data[15] + '" max="' + data[19] + '" required><span class="input-group-btn">';
+            cols += '<input type="text" name="qty[]" class="form-control qty numkey input-number text-center" step="any" value="' +
+                data[15] + '" max="' + data[19] + '" required style="min-width:50px">';
 
             // Show plus button if no IMEI (for all product types including raw_material and warehouse_store)
             if (!data[18] || data[18] == 'null' || data[18] == '0' || data[18] == 0 || data[18] === '' || (data[20] && (data[20].trim() == 'raw_material' || data[20].trim() == 'warehouse_store'))) {
-                cols +=
-                    '<button type="button" class="btn btn-default plus ml-1" style="padding:5px"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></button>';
+                cols += '<div class="input-group-append"><button type="button" class="btn btn-outline-secondary plus" style="padding:5px 10px"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></button></div>';
             }
 
-            cols += '</span></div></td>';
+            cols += '</div></td>';
 
-            cols += '<td class="col-sm-2 sub-total-cell"><span class="sub-total"></span> <button type="button" class="ibtnDel btn btn-danger btn-sm" title="' + {{ json_encode(__('db.Remove')) }} + '"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg></button></td>';
+            cols += '<td class="col-sm-2 sub-total-cell"><span class="sub-total"></span> <button type="button" class="ibtnDel btn btn-danger btn-sm" title="' + {!! json_encode(__('db.Remove')) !!} + '"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg></button></td>';
             cols += '<input type="hidden" class="product-code" name="product_code[]" value="' + data[1] + '"/>';
             cols += '<input type="hidden" class="product-id" name="product_id[]" value="' + data[9] + '"/>';
             cols += '<input type="hidden" class="product_type" name="product_type[]" value="' + data[20] + '"/>';

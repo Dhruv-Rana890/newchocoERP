@@ -83,31 +83,77 @@ section.pos-section {
     padding: 0.5rem;
 }
 
+/* Thead styling - clean, aligned headers */
 .pos-page #myTable tr th {
     background: #d6deff;
     color: #303030;
     font-weight: 600;
-    border-bottom: 2px solid #7c5cc4;
-    padding: 0.5rem;
+    padding: 0.5rem !important;
+    vertical-align: middle !important;
+    text-align: left;
+    border: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
 }
 
-#myTable.order-list {
+/* First th (Product header) - remove any extra styling */
+.pos-page #myTable tr th:first-child.customize-parent-col {
+    padding: 0.5rem !important;
+    border: none !important;
+}
+
+.pos-page #myTable tr th:first-of-type:not(.customize-parent-col) {
+    padding-left: 0.5rem !important;
+    border-left: none !important;
+}
+
+/* Thead row - single bottom border */
+#myTable.order-list thead tr {
+    border-bottom: 2px solid #7c5cc4 !important;
+}
+
+#myTable.order-list thead th {
+    border: none !important;
+    border-bottom: none !important;
+}
+
+/* Single clean border between rows: use row-level border for perfect alignment */
+#myTable.order-list.table,
+#myTable.order-list.table-hover,
+#myTable.order-list.table-striped {
+    border-collapse: collapse !important;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border: none !important;
 }
 
 #myTable.order-list tbody tr {
     transition: background-color 0.15s ease;
+    border: none !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: 1px solid #e8e8e8 !important;
 }
 
 #myTable.order-list tbody tr:hover {
     background-color: rgba(124, 92, 196, 0.06);
 }
 
+#myTable.order-list tbody tr:last-child {
+    border-bottom: none !important;
+}
+
 #myTable.order-list tbody td {
     vertical-align: middle !important;
-    border-bottom: 1px solid #eee;
+    border: none !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    padding: 0.5rem !important;
 }
 
 .order-list .sub-total-cell {
@@ -170,6 +216,7 @@ label {
     padding: 0;
 }
 
+/* Global table border-collapse */
 table,
 tr,
 td {
@@ -602,15 +649,39 @@ button.close svg {
     box-shadow: 0 2px 8px rgba(124, 92, 196, 0.35);
 }
 
-/* Customize parent radio in order list */
-.customize-parent-td {
+/* Customize parent radio column – clean layout, no extra borders */
+#myTable.order-list .customize-parent-td {
     width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    padding: 0.5rem !important;
     vertical-align: middle !important;
+    border: none !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    text-align: center;
 }
 
-.customize-parent-td .customize-parent-radio {
+#myTable.order-list .customize-parent-td label {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 28px;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+}
+
+#myTable.order-list .customize-parent-td .customize-parent-radio {
     width: 18px;
     height: 18px;
+    margin: 0;
     cursor: pointer;
     accent-color: #7c5cc4;
+    flex-shrink: 0;
+    display: block;
 }
