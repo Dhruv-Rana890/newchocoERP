@@ -2053,9 +2053,9 @@ class SaleController extends Controller
             $lims_account_list = Account::select('id', 'name', 'is_default')->where('is_active', true)->get();
 
             // POS customization: dynamic categories (BOXES, EMPTY TRAY) + static (Customer Tray) from category table (case-insensitive name match)
-            $pos_boxes_category = Category::where('is_active', true)->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim('BOXES'))])->first();
-            $pos_empty_tray_category = Category::where('is_active', true)->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim('EMPTY TRAY'))])->first();
-            $pos_customer_tray_category = Category::where('is_active', true)->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim('Customer Tray'))])->first();
+            $pos_boxes_category = Category::where('type', 'warehouse_store')->where('is_active', true)->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim('BOXES'))])->first();
+            $pos_empty_tray_category = Category::where('type', 'warehouse_store')->where('is_active', true)->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim('EMPTY TRAY'))])->first();
+            $pos_customer_tray_category = Category::where('type', 'warehouse_store')->where('is_active', true)->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim('Customer Tray'))])->first();
             $pos_boxes_category_id = $pos_boxes_category ? $pos_boxes_category->id : null;
             $pos_empty_tray_category_id = $pos_empty_tray_category ? $pos_empty_tray_category->id : null;
             $pos_customer_tray_category_id = $pos_customer_tray_category ? $pos_customer_tray_category->id : null;
@@ -2243,9 +2243,9 @@ class SaleController extends Controller
      */
     private function getPosExcludeCategoryIds(): array
     {
-        $pos_boxes = Category::where('is_active', true)->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim('BOXES'))])->first();
-        $pos_empty_tray = Category::where('is_active', true)->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim('EMPTY TRAY'))])->first();
-        $pos_customer_tray = Category::where('is_active', true)->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim('Customer Tray'))])->first();
+        $pos_boxes = Category::where('type', 'warehouse_store')->where('is_active', true)->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim('BOXES'))])->first();
+        $pos_empty_tray = Category::where('type', 'warehouse_store')->where('is_active', true)->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim('EMPTY TRAY'))])->first();
+        $pos_customer_tray = Category::where('type', 'warehouse_store')->where('is_active', true)->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim('Customer Tray'))])->first();
         return array_values(array_filter([
             $pos_boxes ? $pos_boxes->id : null,
             $pos_empty_tray ? $pos_empty_tray->id : null,
@@ -2255,6 +2255,7 @@ class SaleController extends Controller
 
     public function getProducts($warehouse_id, $key, $cat_or_brand_id)
     {
+        dd($warehouse_id, $key, $cat_or_brand_id);
         $pos_customize = request()->query('pos_customize', 0);
         $excludeCategoryIds = $pos_customize ? [] : $this->getPosExcludeCategoryIds();
 
@@ -3855,6 +3856,7 @@ class SaleController extends Controller
             $receipt_printer = Printer::where('warehouse_id', $lims_sale_data->warehouse_id)->first();
             if ($receipt_printer && $is_print) {
                 if ($invoice_settings->size == '58mm' || $invoice_settings->size == '80mm') {
+                    dd(11);
                     $data = $this->getReceiptData(
                         $invoice_settings,
                         $lims_sale_data,
@@ -3875,23 +3877,31 @@ class SaleController extends Controller
                     app(PrinterService::class)->printReceipt($receipt_printer, $data);
                     return 'receipt_printer';
                 } else {
+                    dd(12);
                     return 'invoice_settings_error';
                 }
             } elseif ($invoice_settings->size == 'a4') {
+                dd(13);
                 return view('backend.setting.invoice_setting.a4', compact('invoice_settings', 'lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'paid_by_info', 'change_amount', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             } elseif ($invoice_settings->size == '58mm') {
+                dd(14);
                 return view('backend.setting.invoice_setting.58mm', compact('invoice_settings', 'lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             } elseif ($invoice_settings->size == '80mm') {
+                dd(15);
                 return view('backend.setting.invoice_setting.80mm', compact('invoice_settings', 'lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             }
             // old invoice code
             elseif ($lims_pos_setting_data->invoice_option == 'A4') {
+                dd(16);
                 return view('backend.sale.a4_invoice', compact('lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'paid_by_info', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             } elseif ($lims_sale_data->sale_type == 'online') {
+                dd(17);
                 return view('backend.sale.a4_invoice', compact('lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'paid_by_info', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             } elseif ($lims_pos_setting_data->invoice_option == 'thermal' && $lims_pos_setting_data->thermal_invoice_size == '58') {
+                dd(18);
                 return view('backend.sale.invoice58', compact('lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             } else {
+                dd(19);
                 return view('backend.sale.invoice', compact('lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             }
 
@@ -5434,7 +5444,7 @@ class SaleController extends Controller
 
 
         // ------------------------------------------
-        // COMBINE RESULTS
+        // COMBINE RESULTS (base singles)
         // ------------------------------------------
         $baseProducts = $byCode
             ->merge($byName)
@@ -5443,40 +5453,42 @@ class SaleController extends Controller
             ->take(20)
             ->values();
 
+        // 🔹 Step 4: Add combo products (only when not in POS Customization mode)
+        $orderType = (int) request()->query('order_type', 1);
+        if ($orderType !== 2) {
+            $comboQuery = Product::where('products.is_active', true)
+                ->where('products.type', 'combo')
+                ->where(function ($q) use ($search) {
+                    $q->where('products.code', 'like', '%' . $search . '%')
+                        ->orWhere('products.name', 'like', '%' . $search . '%');
+                });
+            if (!empty($excludeCategoryIds)) {
+                $comboQuery = $comboQuery->whereNotIn('products.category_id', $excludeCategoryIds);
+            }
+            $combos = $comboQuery->select('products.*')->orderBy('name')->limit(20)->get();
 
-        // 🔹 Step 4: Add combo products
-        $comboQuery = Product::where('products.is_active', true)
-            ->where('products.type', 'combo')
-            ->where(function ($q) use ($search) {
-                $q->where('products.code', 'like', '%' . $search . '%')
-                    ->orWhere('products.name', 'like', '%' . $search . '%');
-            });
-        if (!empty($excludeCategoryIds)) {
-            $comboQuery = $comboQuery->whereNotIn('products.category_id', $excludeCategoryIds);
-        }
-        $combos = $comboQuery->select('products.*')->orderBy('name')->limit(20)->get();
+            // Calculate combo available qty efficiently
+            foreach ($combos as $combo) {
+                $componentIds = array_filter(explode(',', $combo->product_list));
+                $requiredQtys = array_filter(explode(',', $combo->qty_list));
+                $minAvailable = PHP_INT_MAX;
 
-        // Calculate combo available qty efficiently
-        foreach ($combos as $combo) {
-            $componentIds = array_filter(explode(',', $combo->product_list));
-            $requiredQtys = array_filter(explode(',', $combo->qty_list));
-            $minAvailable = PHP_INT_MAX;
+                foreach ($componentIds as $i => $compId) {
+                    $required = isset($requiredQtys[$i]) ? (int)$requiredQtys[$i] : 1;
+                    $stock = $warehouseStocks[$compId][0]->qty ?? 0;
 
-            foreach ($componentIds as $i => $compId) {
-                $required = isset($requiredQtys[$i]) ? (int)$requiredQtys[$i] : 1;
-                $stock = $warehouseStocks[$compId][0]->qty ?? 0;
+                    if ($stock <= 0) {
+                        $minAvailable = 0;
+                        break;
+                    }
 
-                if ($stock <= 0) {
-                    $minAvailable = 0;
-                    break;
+                    $available = floor($stock / max(1, $required));
+                    $minAvailable = min($minAvailable, $available);
                 }
 
-                $available = floor($stock / max(1, $required));
-                $minAvailable = min($minAvailable, $available);
+                $combo->qty = $minAvailable == PHP_INT_MAX ? 0 : $minAvailable;
+                $baseProducts->push($combo);
             }
-
-            $combo->qty = $minAvailable == PHP_INT_MAX ? 0 : $minAvailable;
-            $baseProducts->push($combo);
         }
 
         // 🔹 Step 5: Build unified product array

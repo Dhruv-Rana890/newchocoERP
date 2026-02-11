@@ -686,6 +686,33 @@ button.close svg {
     display: block;
 }
 
+/* POS order-list: differentiate Display vs Customization rows (subtle, no labels) */
+#myTable.order-list tbody tr.pos-row-display {
+    background-color: #ffffff;
+}
+
+#myTable.order-list tbody tr.pos-row-customize {
+    background: linear-gradient(90deg, rgba(124,92,196,0.06), transparent);
+}
+
+#myTable.order-list tbody tr.pos-row-customize-parent {
+    border-left: 4px solid #7c5cc4 !important;
+}
+
+#myTable.order-list tbody tr.pos-row-customize-child {
+    border-left: 4px solid rgba(124,92,196,0.45) !important;
+}
+
+/* POS customization setup info box (instead of bootstrap alert) */
+.pos-customize-setup-box {
+    display: block;
+    border-radius: 6px;
+    background: #fff7e6;
+    border: 1px solid #ffe0a8;
+    color: #7a5b1a;
+    font-size: 12px;
+}
+
 /* POS product grid: view button on each product card */
 .product-img {
     position: relative;

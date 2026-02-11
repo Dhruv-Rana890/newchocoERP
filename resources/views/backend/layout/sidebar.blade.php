@@ -114,10 +114,10 @@
                             <li id="basement-list-menu"><a href="{{ route('warehouse-stores.index') }}">{{ __('db.Warehouse Stores List') }}</a>
                             </li>
                         @endcan
-                        @can('warehouse-stores-add')
+                        {{-- @can('warehouse-stores-add')
                             <li id="basement-create-menu"><a
                                     href="{{ route('warehouse-stores.create') }}">{{ __('db.add_warehouse_store') }}</a></li>
-                        @endcan
+                        @endcan --}}
                         @can('warehouse-stores-index')
                             <li id="warehouse-store-adjustment-menu"><a href="{{ route('warehouse-store-adjustment.index') }}">{{ __('db.Adjustment List') }}</a></li>
                         @endcan
@@ -718,7 +718,7 @@
                 @endif
             @endif
 
-            {{-- @can('addons')
+            @can('addons')
                 @if (\Auth::user()->role_id != 5)
                     @if (!config('database.connections.saleprosaas_landlord'))
                         <li><a href="{{ url('addon-list') }}" id="addon-list"> <i
@@ -744,5 +744,5 @@
                         @include('restaurant::backend.layout.sidebar-menu')
                     @endif
                 @endif
-            @endcan --}}
+            @endcan
         </ul>

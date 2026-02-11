@@ -660,30 +660,44 @@
                                                     $order_type = isset($lims_sale_data) && !empty($lims_sale_data) ? ($lims_sale_data->order_type ?? 1) : 1;
                                                 @endphp
                                                 <option value="1" @if ($order_type == 1) selected @endif>{{ __('db.Display') }}</option>
-                                                <option value="2" @if ($order_type == 2) selected @endif>{{ __('db.Customization') }}</option>
+                                                <option value="2" @if ($order_type == 2) selected @endif>{{ __('Custom Creation') }}</option>
                                             </select>
                                         </div>
                                     </div>
                                 </div>
                                 <div id="customizetypebox" class="col-12 form-group" style="display:none;">
                                     <label class="d-block mb-1">{{ __('db.Select Tray or Box') }}</label>
-                                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                                        @if(!empty($pos_boxes_category_id))
-                                        <a href="javascript:void(0);" class="btn btn-outline-secondary btn-sm customize_type" data-customize-type-id="{{ $pos_boxes_category_id }}">BOXES</a>
-                                        @else
-                                        <span class="badge badge-warning text-dark">{{ __('db.please_create_boxes_category') }}</span>
-                                        @endif
-                                        @if(!empty($pos_empty_tray_category_id))
-                                        <a href="javascript:void(0);" class="btn btn-outline-secondary btn-sm customize_type" data-customize-type-id="{{ $pos_empty_tray_category_id }}">EMPTY TRAY</a>
-                                        @else
-                                        <span class="badge badge-warning text-dark">{{ __('db.please_create_empty_tray_category') }}</span>
-                                        @endif
-                                        @if(!empty($pos_customer_tray_category_id))
-                                        <a href="javascript:void(0);" class="btn btn-outline-secondary btn-sm customize_type customize_type_static" data-customize-type-id="{{ $pos_customer_tray_category_id }}">Customer Tray</a>
-                                        @else
-                                        <span class="badge badge-warning text-dark">{{ __('db.please_create_customer_tray_category') }}</span>
-                                        @endif
-                                    </div>
+
+                                    @php
+                                        $has_boxes = !empty($pos_boxes_category_id);
+                                        $has_empty_tray = !empty($pos_empty_tray_category_id);
+                                        $has_customer_tray = !empty($pos_customer_tray_category_id);
+                                    @endphp
+
+                                    @if(!$has_boxes && !$has_empty_tray && !$has_customer_tray)
+                                        {{-- Professional single warning when nothing is configured --}}
+                                        <div class="pos-customize-setup-box mb-0 py-2">
+                                            <strong>Setup required for Customization mode:</strong>
+                                            <ol class="mb-0 pl-3">
+                                                <li>Create <strong>Boxes</strong> category In <strong>Warehouse stores</strong> and add tray/box products.</li>
+                                                <li>Create <strong>Empty Tray</strong> category In <strong>Warehouse stores</strong> and add empty tray products.</li>
+                                                <li>Create <strong>Customer Tray</strong> category In <strong>Warehouse stores</strong> and add customer tray products.</li>
+                                            </ol>
+                                        </div>
+                                    @else
+                                        {{-- Clean horizontal buttons for available categories only --}}
+                                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                                            @if($has_boxes)
+                                                <a href="javascript:void(0);" class="btn btn-outline-secondary btn-sm customize_type" data-customize-type-id="{{ $pos_boxes_category_id }}">BOXES</a>
+                                            @endif
+                                            @if($has_empty_tray)
+                                                <a href="javascript:void(0);" class="btn btn-outline-secondary btn-sm customize_type" data-customize-type-id="{{ $pos_empty_tray_category_id }}">EMPTY TRAY</a>
+                                            @endif
+                                            @if($has_customer_tray)
+                                                <a href="javascript:void(0);" class="btn btn-outline-secondary btn-sm customize_type customize_type_static" data-customize-type-id="{{ $pos_customer_tray_category_id }}">Customer Tray</a>
+                                            @endif
+                                        </div>
+                                    @endif
                                     <input type="hidden" id="customize_type" name="customize_type" value="" />
                                 </div>
                                 @if (in_array('restaurant', explode(',', $general_setting->modules)))
@@ -975,7 +989,7 @@
                                 <thead class="d-none d-md-block">
                                     <tr>
                                         <th class="customize-parent-col" style="width:36px; display:none;"></th>
-                                        <th class="col-sm-6 col-6">{{ __('db.product') }}</th>
+                                        <th class="col-sm-5 col-6">{{ __('db.product') }}</th>
                                         <th class="col-sm-2 d-none d-md-table-cell">{{ __('db.Price') }}</th>
                                         <th class="col-sm-2">{{ __('db.Quantity') }}</th>
                                         <th class="col-sm-2">{{ __('db.Subtotal') }}</th>
@@ -3493,7 +3507,8 @@
                 var wh = $('#warehouse_id').val();
                 if (!wh) return;
                 $('#main-product-grid').html(mainGridLoaderHtml);
-                $.get('{{ url("sales/search") }}/' + wh + '/' + safeBtoa(q), function(data) {
+                var ot = $('#order_type').val() || '1';
+                $.get('{{ url("sales/search") }}/' + wh + '/' + safeBtoa(q) + '?order_type=' + encodeURIComponent(ot), function(data) {
                     var tableData = '<div class="product-grid">';
                     if (data && data.length > 0) {
                         data.forEach(function(p) {
@@ -4063,7 +4078,9 @@
                 var requestedQty = parseFloat(data[15]) || 1;
                 if (requestedQty > maxStock) data[15] = maxStock;
             }
-            var newRow = $('<tr id="' + String(data[1]).replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + (isParentRow ? 'p' + customizeParentCounter : Date.now()) + '">');
+            var rowId = String(data[1]).replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + (isParentRow ? 'p' + customizeParentCounter : Date.now());
+            var rowClass = orderType2 ? (isParentRow ? 'pos-row-customize pos-row-customize-parent' : 'pos-row-customize-child') : 'pos-row-display';
+            var newRow = $('<tr id="' + rowId + '" class=\"' + rowClass + '\">');
             var cols = '';
             temp_unit_name = (data[6]).split(',');
             if (orderType2) {
