@@ -117,6 +117,56 @@ Route::get('migrate', function() {
 	dd('migrated');
 });
 
+// DEBUG: Find Blade syntax error - visit /debug-blade-syntax
+Route::get('debug-blade-syntax', function () {
+    Artisan::call('view:clear');
+    $results = ['step' => [], 'lint_errors' => [], 'lint_ok' => []];
+
+    try {
+        $results['step'][] = 'Compiling ecommerce settings view...';
+        $compiler = app('blade.compiler');
+        $finder = app('view')->getFinder();
+
+        $viewsToCompile = [
+            'ecommerce::backend.settings.index',
+            'backend.layout.main',
+            'backend.layout.sidebar',
+            'ecommerce::backend.layout.sidebar-menu',
+        ];
+        foreach ($viewsToCompile as $name) {
+            try {
+                $path = $finder->find($name);
+                $compiler->compile($path);
+                $results['step'][] = "Compiled: $name => $path";
+            } catch (\Throwable $e) {
+                $results['step'][] = "Compile ERROR for $name: " . $e->getMessage();
+                $results['compile_error_file'] = $e->getFile();
+                $results['compile_error_line'] = $e->getLine();
+            }
+        }
+
+        $compiledDir = storage_path('framework/views');
+        $files = glob($compiledDir . '/*.php');
+        $results['step'][] = 'Running php -l on ' . count($files) . ' compiled files...';
+
+        foreach ($files as $file) {
+            $output = [];
+            exec('php -l ' . escapeshellarg($file) . ' 2>&1', $output);
+            $msg = implode(' ', $output);
+            if (strpos($msg, 'No syntax errors') !== false) {
+                $results['lint_ok'][basename($file)] = 'OK';
+            } else {
+                $results['lint_errors'][basename($file)] = $msg;
+            }
+        }
+        $results['summary'] = count($results['lint_errors']) . ' with syntax errors, ' . count($results['lint_ok']) . ' OK';
+    } catch (\Throwable $e) {
+        $results['fatal'] = $e->getMessage();
+        $results['trace'] = $e->getTraceAsString();
+    }
+    return response('<pre>' . print_r($results, true) . '</pre>');
+});
+
 Route::get('clear',function() {
     Artisan::call('optimize:clear');
     cache()->forget('biller_list');

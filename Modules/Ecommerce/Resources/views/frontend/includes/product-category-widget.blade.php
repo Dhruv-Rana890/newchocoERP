@@ -2,6 +2,7 @@
         $products = DB::table('products')->where('is_active', true)->where('is_online', true)->where('category_id',$widget->product_category_id)->offset(0)->limit($widget->product_category_limit)->get();
     @endphp
 
+    @if(isset($products) && $products->isNotEmpty())
     <section class="product-tab-section">
         <div class="container-fluid">
             <div class="section-title mb-3">
@@ -17,7 +18,7 @@
             </div> 
 
             @if($widget->product_category_type == 'slider')
-            <div class="product-slider-wrapper swiper-container" data-loop="{{$widget->category_slider_loop}}" data-autoplay="{{$widget->category_slider_autoplay}}">
+            <div class="product-slider-wrapper swiper-container" data-loop="{{$widget->product_category_slider_loop ?? 'true'}}" data-autoplay="{{$widget->product_category_slider_autoplay ?? 'true'}}">
                 <div class="swiper-wrapper">
                     @forelse ($products as $product)
                     <div class="swiper-slide">
@@ -36,3 +37,4 @@
             @endif
         </div>
     </section>
+    @endif

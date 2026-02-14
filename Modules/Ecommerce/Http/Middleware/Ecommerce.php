@@ -57,18 +57,20 @@ class Ecommerce
                 'search' => 0,
             ];
 
-            $ecommerce_setting = Cache::remember('ecommerce_setting', 60*60*24*365, function () use ($defaults) {
-                $row = DB::table('ecommerce_settings')->latest()->first();
-                if ($row) {
-                    return (object) array_merge($defaults, (array) $row);
-                }
-                return (object) $defaults;
-            });
-
-            // Ensure site_title and other keys always exist (fixes old cache or missing DB columns)
-            $ecommerce_setting = (object) array_merge($defaults, (array) $ecommerce_setting);
+            // Fetch fresh from DB each request - settings changes show immediately
+            $row = DB::table('ecommerce_settings')->latest()->first();
+            $ecommerce_setting = (object) array_merge($defaults, (array) ($row ?? []));
+            Cache::put('ecommerce_setting', $ecommerce_setting, now()->addMinute()); // For code that uses Cache::get
 
             View::share('ecommerce_setting', $ecommerce_setting);
+
+            // DEBUG: When ?debug_home=1 - show what middleware loaded from DB
+            if ($request->query('debug_home')) {
+                View::share('middleware_debug', [
+                    'home_page_from_db' => $ecommerce_setting->home_page ?? 'null',
+                    'fetched_at' => now()->format('H:i:s'),
+                ]);
+            }
 
             $social_links =  Cache::remember('social_links', 60*60*24*365, function () {
                 return DB::table('social_links')->orderBy('order','ASC')->get();

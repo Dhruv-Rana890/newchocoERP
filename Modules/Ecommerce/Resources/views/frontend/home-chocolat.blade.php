@@ -8,9 +8,12 @@
 @php
     $isRtl = !empty($ecommerce_setting->is_rtl);
     $lang = app()->getLocale();
+    $gs = $general_setting ?? null;
+    $cur = $currency ?? null;
+    $curSym = $cur ? ($cur->symbol ?? $cur->code ?? '') : '';
 @endphp
 
-{{-- Hero Banners --}}
+{{-- Hero Banners (with fallback when empty) --}}
 @if(isset($hero_banners) && $hero_banners->isNotEmpty())
 <section class="relative overflow-hidden" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
     @foreach($hero_banners as $banner)
@@ -42,6 +45,25 @@
     </div>
     @endforeach
 </section>
+@else
+{{-- Fallback Hero when no banners --}}
+<section class="relative overflow-hidden" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
+    <div class="relative min-h-[400px] md:min-h-[500px] flex items-center" style="background-color: {{ $ecommerce_setting->header_bg_color ?? '#8B1538' }};">
+        <div class="container mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16">
+            <div class="max-w-2xl">
+                <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold uppercase tracking-wide mb-4 text-white">
+                    {{ $lang == 'ar' ? 'هدايا الشوكولاتة الفاخرة' : 'Premium Chocolate Gifts' }}
+                </h1>
+                <p class="text-lg md:text-xl mb-6 text-white opacity-95">
+                    {{ $lang == 'ar' ? 'اكتشف تشكيلتنا المميزة من الهدايا اللذيذة' : 'Discover our exquisite collection of delicious gifts' }}
+                </p>
+                <a href="{{ url('shop') }}" class="inline-block px-8 py-3 font-semibold uppercase tracking-wider text-white transition hover:opacity-90" style="background-color: {{ $ecommerce_setting->cta_bg_color ?? '#000000' }};">
+                    {{ $lang == 'ar' ? 'تسوق الآن' : 'SHOP NOW' }}
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
 @endif
 
 {{-- Featured Products Section --}}
@@ -54,7 +76,7 @@
         <div class="relative">
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6 product-grid-chocolat">
                 @foreach($featured_products as $product)
-                <a href="{{ url('product/' . ($product->slug ?? $product->name) . '/' . $product->id) }}" class="group block bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+                <a href="{{ url('product') }}/{{ $product->slug ?? Str::slug($product->name ?? '') }}/{{ $product->id }}" class="group block bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
                     <div class="aspect-square relative bg-gray-100">
                         @if(!empty($product->image))
                         @php $img = is_string($product->image) ? explode(',', $product->image)[0] : $product->image; @endphp
@@ -75,25 +97,25 @@
                         <div class="mt-2 flex items-center gap-2">
                             @if(($product->promotion ?? 0) == 1 && (empty($product->last_date) || ($product->last_date ?? '') > date('Y-m-d')))
                             <span class="font-bold" style="color: var(--theme-color, #8B1538);">
-                                @if($general_setting->currency_position == 'prefix')
-                                {{ $currency->symbol ?? '' }} {{ $product->promotion_price ?? $product->price }}
+                                @if($gs && ($gs->currency_position ?? 'prefix') == 'prefix')
+                                {{ $curSym }} {{ $product->promotion_price ?? $product->price }}
                                 @else
-                                {{ $product->promotion_price ?? $product->price }} {{ $currency->symbol ?? '' }}
+                                {{ $product->promotion_price ?? $product->price }} {{ $curSym }}
                                 @endif
                             </span>
                             <span class="text-gray-400 text-sm line-through">
-                                @if($general_setting->currency_position == 'prefix')
-                                {{ $currency->symbol ?? '' }} {{ $product->price }}
+                                @if($gs && ($gs->currency_position ?? 'prefix') == 'prefix')
+                                {{ $curSym }} {{ $product->price }}
                                 @else
-                                {{ $product->price }} {{ $currency->symbol ?? '' }}
+                                {{ $product->price }} {{ $curSym }}
                                 @endif
                             </span>
                             @else
                             <span class="font-bold" style="color: var(--theme-color, #8B1538);">
-                                @if($general_setting->currency_position == 'prefix')
-                                {{ $currency->symbol ?? '' }} {{ $product->price }}
+                                @if($gs && ($gs->currency_position ?? 'prefix') == 'prefix')
+                                {{ $curSym }} {{ $product->price }}
                                 @else
-                                {{ $product->price }} {{ $currency->symbol ?? '' }}
+                                {{ $product->price }} {{ $curSym }}
                                 @endif
                             </span>
                             @endif

@@ -50,7 +50,7 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="d-flex align-items-center">
-                                    @if(isset($settings->logo))
+                                    @if(isset($settings->favicon))
                                     <div>
                                         <img style="max-width: 50px;height:auto;margin-right:25px" src="{{ url('frontend/images') }}/{{$settings->favicon}}" />
                                     </div>
@@ -119,13 +119,13 @@
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label>{{__('db.Header Background')}}</label>
-                                    <input type="text" name="header_bg_color" class="form-control" value="@if($settings){{$settings->header_bg_color ?? '#000000'}}@else#000000@endif" placeholder="#000000">
+                                    <input type="text" name="header_bg_color" class="form-control" value="{{ $settings ? ($settings->header_bg_color ?? '#000000') : '#000000' }}" placeholder="#000000">
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label>{{__('db.Button Background')}}</label>
-                                    <input type="text" name="cta_bg_color" class="form-control" value="@if($settings){{$settings->cta_bg_color ?? '#000000'}}@else#000000@endif" placeholder="#000000">
+                                    <input type="text" name="cta_bg_color" class="form-control" value="{{ $settings ? ($settings->cta_bg_color ?? '#000000') : '#000000' }}" placeholder="#000000">
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -146,13 +146,14 @@
                                 <div class="form-group">
                                     <label>{{__('db.Home Page')}}</label>
                                     <select name="home_page" class="form-control">
-                                        <option></option>
+                                        <option value="">{{__('db.Default')}}</option>
                                         @if($pages)
                                         @foreach($pages as $page)
-                                        <option @if(isset($settings->home_page) && $settings->home_page == $page->id) selected @endif value="{{$page->id}}">{{$page->page_name}}</option>
+                                        <option @if(isset($settings->home_page) && $settings->home_page == $page->id) selected @endif value="{{$page->id}}">{{$page->page_name}} ({{$page->template}})</option>
                                         @endforeach
                                         @endif
                                     </select>
+                                    <small class="text-muted">Choose a page: Home = widgets, Default = full content. DEBUG: home_page = {{ isset($settings) && isset($settings->home_page) ? $settings->home_page : 'null' }}. Site par ?debug_home=1 se verify karo.</small>
                                 </div>
                             </div>
                             <div class="col-md-3">
@@ -238,7 +239,7 @@
                                     <label>{{__('db.Pages to read & accept before checkout')}}</label>
                                     <select name="checkout_pages[]" class="selectpicker form-control" multiple>
                                         @foreach($pages as $page)
-                                        <option value="{{$page->id}}" @if(isset($settings) && isset($settings->checkout_pages) && in_array($page->id,json_decode($settings->checkout_pages))) selected @endif>{{$page->page_name}}</option>
+                                        <option value="{{$page->id}}" @if(isset($settings) && isset($settings->checkout_pages) && in_array($page->id, json_decode($settings->checkout_pages ?? '[]', true) ?? [])) selected @endif>{{$page->page_name}}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -299,7 +300,7 @@
 
 
                             @php
-                                $qrCodes = json_decode($settings->qr_code ?? '[]', true);
+                                $qrCodes = json_decode(($settings && isset($settings->qr_code)) ? $settings->qr_code : '[]', true);
                             @endphp
 
                             @forelse ($currencies as $currency)
@@ -316,7 +317,7 @@
                                         <input type="file" name="qr_code[]" class="form-control"/>
                                     </div>
 
-                                    @if(isset($currencyQr['qr_code']))
+                                    @if($currencyQr && isset($currencyQr['qr_code']))
                                         <div>
                                             <img style="max-width: 50px; height:auto;"
                                                 src="{{ url('frontend/images/' . $currencyQr['qr_code']) }}"

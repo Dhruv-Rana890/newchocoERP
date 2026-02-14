@@ -718,6 +718,13 @@
                 @endif
             @endif
 
+            <li>
+                <a href="#ecommerce" aria-expanded="false" data-toggle="collapse"> <i
+                        class="dripicons-shopping-bag"></i><span>eCommerce</span></a>
+                <ul id="ecommerce" class="collapse list-unstyled ">
+                    @include('ecommerce::backend.layout.sidebar-menu')
+                </ul>
+            </li>
             @can('addons')
                 @if (\Auth::user()->role_id != 5)
                     @if (!config('database.connections.saleprosaas_landlord'))
@@ -728,15 +735,8 @@
                         <li><a href="{{ route('woocommerce.index') }}"> <i
                                     class="fa fa-wordpress"></i><span>WooCommerce</span></a></li>
                     @endif
-                    @if (in_array('ecommerce', explode(',', $general_setting->modules)))
-                        <li>
-                            <a href="#ecommerce" aria-expanded="false" data-toggle="collapse"> <i
-                                    class="dripicons-shopping-bag"></i><span>eCommerce</span></a>
-                            <ul id="ecommerce" class="collapse list-unstyled ">
-                                @include('ecommerce::backend.layout.sidebar-menu')
-                            </ul>
-                        </li>
-                    @endif
+                    <!-- @if (in_array('ecommerce', explode(',', $general_setting->modules))) -->
+                    <!-- @endif -->
                     @if (in_array('project', explode(',', $general_setting->modules)))
                         @include('project::backend.layout.sidebar-menu')
                     @endif

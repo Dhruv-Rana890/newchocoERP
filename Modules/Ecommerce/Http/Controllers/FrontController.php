@@ -4,6 +4,7 @@ namespace Modules\Ecommerce\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Modules\Ecommerce\Entities\Sliders;
 use App\Models\Product;
@@ -27,7 +28,11 @@ class FrontController extends Controller
     public function index()
     {
         $sliders = DB::table('sliders')->orderBy('order', 'asc')->get();
-        $ecommerce_setting = Cache::get('ecommerce_setting');
+        $ecommerce_setting = view()->shared('ecommerce_setting');
+
+        // DEBUG: Add ?debug_home=1 to URL to see which home page is loading
+        $showDebug = request()->has('debug_home');
+        $debugInfo = [];
 
         // Hero banners for Hotel Chocolat-style homepage
         $hero_banners = DB::table('homepage_hero_banners')
@@ -57,32 +62,80 @@ class FrontController extends Controller
                 ->get();
         }
 
-        if(isset($ecommerce_setting->home_page)) {
-            $home = $ecommerce_setting->home_page;
+        $home = isset($ecommerce_setting->home_page) && $ecommerce_setting->home_page ? $ecommerce_setting->home_page : null;
+
+        if ($showDebug) {
+            $debugInfo['source'] = 'DB fresh (middleware fetches each request)';
+            $debugInfo['settings_home_page'] = $ecommerce_setting->home_page ?? 'null';
+            $debugInfo['resolved_home_id'] = $home ?? 'null (using default layout)';
+            $debugInfo['theme'] = $ecommerce_setting->theme ?? 'default';
         }
 
-        if(isset($home)){
-            $page = DB::table('pages')->where('id',$home)->first();
+        if ($home) {
+            $page = DB::table('pages')->where('id', $home)->where('status', 1)->first();
 
-            if(isset($page)){
-                if($page->template == 'home'){
-                    $widgets = DB::table('page_widgets')->where('page_id',$home)->orderBy('order','ASC')->get();
+            if ($page) {
+                if ($showDebug) {
+                    $debugInfo['page_found'] = "Yes - ID: {$page->id}, Name: {$page->page_name}, Template: {$page->template}";
+                }
+                // Template 'default' = show page content as homepage (custom page)
+                if ($page->template == 'default') {
+                    if ($showDebug) {
+                        $debugInfo['view_rendered'] = 'ecommerce::frontend.page-show (full page content)';
+                        $debugInfo['reason'] = "Template is 'default' - showing page content as homepage";
+                        View::share('home_debug_info', $debugInfo);
+                    }
+                    return view('ecommerce::frontend.page-show', compact('page'));
+                }
+
+                // Template 'home' = use widgets in home layout
+                if ($page->template == 'home') {
+                    $widgets = DB::table('page_widgets')->where('page_id', $home)->orderBy('order', 'ASC')->get();
                 }
 
                 $recently_viewed = [];
-                if(session()->has('recently_viewed')){
+                if (session()->has('recently_viewed')) {
                     $recently_viewed = session()->get('recently_viewed');
                 }
 
+                $widgets = $widgets ?? collect();
+                $viewName = (isset($ecommerce_setting->theme) && $ecommerce_setting->theme == 'chocolat') ? 'ecommerce::frontend.home-chocolat' : 'ecommerce::frontend/home';
+                if ($showDebug) {
+                    $debugInfo['view_rendered'] = $viewName;
+                    $debugInfo['reason'] = "Template is 'home' - using widgets in home layout";
+                    $debugInfo['widgets_count'] = $widgets->count();
+                    View::share('home_debug_info', $debugInfo);
+                }
                 if (isset($ecommerce_setting->theme) && $ecommerce_setting->theme == 'chocolat') {
                     return view('ecommerce::frontend.home-chocolat', compact('sliders', 'widgets', 'recently_viewed', 'hero_banners', 'featured_products'));
                 }
                 return view('ecommerce::frontend/home', compact('sliders', 'widgets', 'recently_viewed', 'hero_banners', 'featured_products'));
+            } else {
+                if ($showDebug) {
+                    $debugInfo['page_found'] = "NO - Page ID {$home} not found or status=0";
+                    $debugInfo['view_rendered'] = 'Default home layout (fallback)';
+                    $debugInfo['reason'] = 'Page missing/inactive - using default';
+                    View::share('home_debug_info', $debugInfo);
+                }
+            }
+        } else {
+            if ($showDebug) {
+                $debugInfo['view_rendered'] = 'Default home layout (home_page not set in settings)';
+                $debugInfo['reason'] = 'No custom page selected in Ecommerce Settings > Home Page';
+                View::share('home_debug_info', $debugInfo);
             }
         }
 
         $widgets = $widgets ?? collect();
-        $recently_viewed = $recently_viewed ?? [];
+        $recently_viewed = [];
+        if (session()->has('recently_viewed')) {
+            $recently_viewed = session()->get('recently_viewed');
+        }
+        $viewName = (isset($ecommerce_setting->theme) && $ecommerce_setting->theme == 'chocolat') ? 'ecommerce::frontend.home-chocolat' : 'ecommerce::frontend/home';
+        if ($showDebug && empty($debugInfo['view_rendered'])) {
+            $debugInfo['view_rendered'] = $viewName;
+            View::share('home_debug_info', $debugInfo);
+        }
         if (isset($ecommerce_setting->theme) && $ecommerce_setting->theme == 'chocolat') {
             return view('ecommerce::frontend.home-chocolat', compact('sliders', 'hero_banners', 'featured_products', 'widgets', 'recently_viewed'));
         }

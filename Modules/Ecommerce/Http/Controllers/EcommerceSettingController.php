@@ -26,7 +26,7 @@ class EcommerceSettingController extends Controller
         $biller_list = DB::table('billers')->where('is_active',1)->get();
         $currencies = Currency::query()->where('is_active',1)->get();
 
-        return view('ecommerce::backend.settings.index', compact('settings','pages','warehouse_list','biller_list','currencies','collections'));
+        return view('ecommerce::backend.settings.index', compact('settings','pages','warehouse_list','biller_list','currencies'));
     }
 
     public function update(Request $request)
@@ -49,7 +49,7 @@ class EcommerceSettingController extends Controller
             'store_phone'         => $request->store_phone,
             'store_email'         => $request->store_email,
             'store_address'       => $request->store_address,
-            'home_page'           => $request->home_page,
+            'home_page'           => $request->home_page ?: null,
             'warehouse_id'        => $request->warehouse_id,
             'biller_id'           => $request->biller_id,
             'contact_form_email'  => $request->contact_form_email,
@@ -196,7 +196,7 @@ class EcommerceSettingController extends Controller
             DB::table('ecommerce_settings')->insert($data);
         }
 
-        Session::flash('message', 'Settings updated successfully.');
+        Session::flash('message', 'Settings updated successfully. Home Page saved: ' . ($data['home_page'] ?? 'Default (none)') . '. Visit homepage with ?debug_home=1 to verify.');
         Session::flash('type', 'success');
 
         $this->cacheForget('ecommerce_setting');

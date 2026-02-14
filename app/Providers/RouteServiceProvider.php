@@ -37,16 +37,15 @@ class RouteServiceProvider extends ServiceProvider
     {
         $this->mapApiRoutes();
 
-        // Ecommerce = only frontend website (no separate simple website)
-        $this->mapEcommerceRoutes();
-
+        // Admin routes FIRST - so /rawmaterials, /purchases, /brand, etc. work correctly
         $this->mapWebRoutes();
 
-        //
+        // Ecommerce frontend routes SECOND - /, /shop, /brands, /collections, etc.
+        $this->mapEcommerceRoutes();
     }
 
     /**
-     * Ecommerce module routes first so "/" shows store and shop is public.
+     * Ecommerce frontend (store) routes - loaded after admin so admin gets priority.
      */
     protected function mapEcommerceRoutes()
     {

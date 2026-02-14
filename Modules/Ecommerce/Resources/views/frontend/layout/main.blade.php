@@ -171,6 +171,12 @@ if (session()->get('currency_code')) {
             }
         }
     </script>
+    <style>
+        body.chocolat-theme .product-tab-section { padding: 2rem 0; }
+        body.chocolat-theme .product-tab-section .section-title h3 { color: #1a1a1a; font-weight: 600; }
+        body.chocolat-theme .product-grid-chocolat { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; }
+        body.chocolat-theme .single-product-wrapper .price { color: var(--theme-color, #8B1538) !important; }
+    </style>
     @endif
 
     @stack('css')
@@ -246,7 +252,7 @@ if (session()->get('currency_code')) {
     @endif
 </head>
 
-<body class="@if(!empty($ecommerce_setting->is_rtl) || in_array(app()->getLocale(), config('website.rtl_locales', ['ar']))) rtl @endif" dir="@if(in_array(app()->getLocale(), config('website.rtl_locales', ['ar']))) rtl @else ltr @endif">
+<body class="@if(!empty($ecommerce_setting->is_rtl) || in_array(app()->getLocale(), config('website.rtl_locales', ['ar']))) rtl @endif @if(isset($ecommerce_setting->theme) && $ecommerce_setting->theme == 'chocolat') chocolat-theme @endif" dir="@if(in_array(app()->getLocale(), config('website.rtl_locales', ['ar']))) rtl @else ltr @endif">
     @if(env('USER_VERIFIED') == false)
     <div id="demo">
         <h6>Theme Colors</h6>
@@ -356,6 +362,19 @@ if (session()->get('currency_code')) {
     </div>
 
     <div class="wrapper">
+    @if(request()->query('debug_home'))
+    <div style="background:#1e3a5f;color:#fff;padding:12px 20px;margin:0;font-family:monospace;font-size:13px;line-height:1.6;border-bottom:3px solid #ffc107;">
+        <strong style="color:#ffc107;">DEBUG Home Page - Remove ?debug_home=1 to hide</strong><br>
+        @if(isset($middleware_debug) && is_array($middleware_debug))
+        <span style="color:#81c784;">[Middleware]</span> @foreach($middleware_debug as $k => $v) {{ $k }}: {{ $v }} | @endforeach<br>
+        @endif
+        @if(isset($home_debug_info) && is_array($home_debug_info))
+        @foreach($home_debug_info as $k => $v)
+        <span style="color:#90caf9;">{{ $k }}:</span> {{ is_scalar($v) ? $v : json_encode($v) }}<br>
+        @endforeach
+        @endif
+    </div>
+    @endif
     @yield('content')
     </div>
 
