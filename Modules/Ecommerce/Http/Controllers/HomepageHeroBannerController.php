@@ -65,13 +65,15 @@ class HomepageHeroBannerController extends Controller
             'cta_text_ar' => 'nullable|string|max:100',
             'cta_link' => 'nullable|string|max:500',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:2048',
+            'slider_type' => 'nullable|in:image,video',
+            'video_url' => 'nullable|string|max:500',
             'bg_color' => 'nullable|string|max:20',
             'text_color' => 'nullable|string|max:20',
             'order' => 'nullable|integer',
             'status' => 'nullable|in:0,1',
         ]);
 
-        return [
+        $data = [
             'title' => $request->title,
             'title_ar' => $request->title_ar,
             'subtitle' => $request->subtitle,
@@ -79,12 +81,21 @@ class HomepageHeroBannerController extends Controller
             'cta_text' => $request->cta_text ?? 'SHOP NOW',
             'cta_text_ar' => $request->cta_text_ar ?? 'تسوق الآن',
             'cta_link' => $request->cta_link,
+            'slider_type' => $request->slider_type ?? 'image',
+            'video_url' => $request->video_url,
             'bg_color' => $request->bg_color ?? '#8B1538',
             'text_color' => $request->text_color ?? '#FFFFFF',
             'order' => (int) ($request->order ?? 0),
             'status' => (int) ($request->status ?? 1),
             'updated_at' => now(),
         ];
+
+        if (!empty($request->images_json)) {
+            $decoded = json_decode($request->images_json, true);
+            $data['images'] = is_array($decoded) ? json_encode($decoded) : null;
+        }
+
+        return $data;
     }
 
     private function uploadImage($file)

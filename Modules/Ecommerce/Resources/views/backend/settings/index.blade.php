@@ -128,6 +128,19 @@
                                     <input type="text" name="cta_bg_color" class="form-control" value="{{ $settings ? ($settings->cta_bg_color ?? '#000000') : '#000000' }}" placeholder="#000000">
                                 </div>
                             </div>
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label>{{__('db.Header Announcement')}} ({{__('db.Chocolat theme only')}})</label>
+                                    <textarea name="header_announcement" class="form-control" rows="2" placeholder="Free shipping on orders over $50">{{ $settings ? ($settings->header_announcement ?? '') : '' }}</textarea>
+                                    <small class="text-muted">Shows below menu with X to close (Chocolat theme)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label>{{__('db.Header Announcement')}} (AR)</label>
+                                    <textarea name="header_announcement_ar" class="form-control" rows="2" dir="rtl" placeholder="شحن مجاني للطلبات فوق 50">{{ $settings ? ($settings->header_announcement_ar ?? '') : '' }}</textarea>
+                                </div>
+                            </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>{{__('db.Featured Products Collection')}}</label>

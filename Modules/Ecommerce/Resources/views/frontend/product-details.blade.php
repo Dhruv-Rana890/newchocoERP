@@ -11,7 +11,8 @@ $product->image = $images[0];
 
 @section('description'){{ $product->meta_description ?? $product->name }}@endsection
 
-@section('image'){{ url('images/product/large') }}/{{$product->image}}@endsection
+@php $defaultProductImg = asset('frontend/images/default-product.svg'); @endphp
+@section('image')@if(!empty($product->image)){{ url('images/product/large') }}/{{$product->image}}@else{{ $defaultProductImg }}@endif @endsection
 
 @section('brand'){{ $brand->title ?? '' }}@endsection
 
@@ -45,13 +46,14 @@ $product->image = $images[0];
                 <div class="slider-wrapper">
                     <div class="slider-for">
                         @foreach($images as $image)
-                        @if(file_exists(url("images/product/xlarge")))
+                        @php $isGif = preg_match('/\.gif$/i', $image); @endphp
+                        @if(file_exists(public_path("images/product/xlarge/".$image)))
                         <div class="slider-for__item ex1" data-src="{{ url('images/product/xlarge') }}/{{$image}}">
-                            <img src="{{ url('images/product/xlarge') }}/{{$image}}" alt="{{ $product->name }}" />
+                            <img src="{{ url('images/product/xlarge') }}/{{$image}}" alt="{{ $product->name }}" @if($isGif) loading="eager" @endif onerror="this.src='{{ $defaultProductImg }}'" />
                         </div>
                         @else
                         <div class="slider-for__item ex1" data-src="{{ url('images/product/large') }}/{{$image}}">
-                            <img src="{{ url('images/product/large') }}/{{$image}}" alt="{{ $product->name }}" />
+                            <img src="{{ url('images/product/large') }}/{{$image}}" alt="{{ $product->name }}" @if($isGif) loading="eager" @endif onerror="this.src='{{ $defaultProductImg }}'" />
                         </div>
                         @endif
                         @endforeach
@@ -59,13 +61,13 @@ $product->image = $images[0];
                     <div class="slider-nav">
                         @foreach($images as $image)
                         <div class="slider-nav__item">
-                            <img src="{{ url('images/product/large') }}/{{$image}}" alt="{{ $product->name }}" />
+                            <img src="{{ url('images/product/large') }}/{{$image}}" alt="{{ $product->name }}" onerror="this.src='{{ $defaultProductImg }}'" />
                         </div>
                         @endforeach
                     </div>
                 </div>
                 @else
-                <img src="https://placehold.co/550x550" alt="{{ $product->name }}"/>
+                <img src="{{ $defaultProductImg }}" alt="{{ $product->name }}" class="img-fluid"/>
                 @endif
             </div>
             <div class="col-md-6 offset-md-1 mt-5">

@@ -52,7 +52,8 @@ class AppServiceProvider extends ServiceProvider
             }
 
             try {
-                if (isset($_COOKIE['language'])) {
+                $supportedLocales = array_keys(config('website.supported_locales', ['en' => [], 'ar' => [], 'hi' => [], 'ur' => []]));
+                if (isset($_COOKIE['language']) && in_array($_COOKIE['language'], $supportedLocales)) {
                     App::setLocale($_COOKIE['language']);
                 } elseif (Schema::hasTable('languages')) {
                     $language = DB::table('languages')->where('is_default', true)->first();

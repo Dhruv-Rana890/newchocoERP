@@ -1,14 +1,15 @@
 <div class="single-product-wrapper">
     <div class="single-product-item">
+        @php $defaultProductImg = asset('frontend/images/default-product.svg'); @endphp
         <a href="{{url('product')}}/{{$product->slug}}/{{$product->id}}"  class="view-details">
             @if($product->image!==null)
             @php
                 $images = explode(',', $product->image);
                 $product->image = $images[0];
             @endphp
-            <img loading="lazy" class="product-img" data-src="{{ url('images/product/medium/') }}/{{ $product->image }}" alt="{{ $product->name }}">
+            <img loading="lazy" class="product-img" data-src="{{ url('images/product/medium/') }}/{{ $product->image }}" alt="{{ $product->name }}" onerror="this.src='{{ $defaultProductImg }}'; this.onerror=null;">
             @else
-            <img loading="lazy" src="https://dummyimage.com/300x300/e5e8ec/e5e8ec&text={{ $product->name }}" alt="{{ $product->name }}">
+            <img loading="lazy" class="product-img" src="{{ $defaultProductImg }}" alt="{{ $product->name }}">
             @endif
         </a>
     </div>

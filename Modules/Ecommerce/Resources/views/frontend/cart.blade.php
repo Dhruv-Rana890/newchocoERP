@@ -56,13 +56,16 @@
                                                 </a>
                                             </div>
                                             <div>
+                                                @php $defaultProductImg = asset('frontend/images/default-product.svg'); @endphp
                                                 @if($cart_product['image']!==null)
                                                     @php
                                                         $images = explode(',', $cart_product['image']);
                                                         $cart_product['image'] = $images[0];
                                                     @endphp
+                                                <img src="{{ url('images/product/small') }}/{{ $cart_product['image'] }}" alt="{{ $cart_product['name'] }}" onerror="this.src='{{ $defaultProductImg }}'; this.onerror=null;">
+                                                @else
+                                                <img src="{{ $defaultProductImg }}" alt="{{ $cart_product['name'] }}">
                                                 @endif
-                                                <img src="{{ url('images/product/small') }}/{{ $cart_product['image'] }}" alt="{{ $cart_product['name'] }}">
                                             </div>
                                             <span class="align-self-center">{!! $cart_product['name'] !!} @if($variant != 0)({{$variant}})@endif</span>
                                         </div>

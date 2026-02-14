@@ -2255,7 +2255,7 @@ class SaleController extends Controller
 
     public function getProducts($warehouse_id, $key, $cat_or_brand_id)
     {
-        dd($warehouse_id, $key, $cat_or_brand_id);
+        // dd($warehouse_id, $key, $cat_or_brand_id);
         $pos_customize = request()->query('pos_customize', 0);
         $excludeCategoryIds = $pos_customize ? [] : $this->getPosExcludeCategoryIds();
 
@@ -3856,7 +3856,7 @@ class SaleController extends Controller
             $receipt_printer = Printer::where('warehouse_id', $lims_sale_data->warehouse_id)->first();
             if ($receipt_printer && $is_print) {
                 if ($invoice_settings->size == '58mm' || $invoice_settings->size == '80mm') {
-                    dd(11);
+                    // dd(11);
                     $data = $this->getReceiptData(
                         $invoice_settings,
                         $lims_sale_data,
@@ -3877,31 +3877,31 @@ class SaleController extends Controller
                     app(PrinterService::class)->printReceipt($receipt_printer, $data);
                     return 'receipt_printer';
                 } else {
-                    dd(12);
+                    // dd(12);
                     return 'invoice_settings_error';
                 }
             } elseif ($invoice_settings->size == 'a4') {
-                dd(13);
+                // dd(13);
                 return view('backend.setting.invoice_setting.a4', compact('invoice_settings', 'lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'paid_by_info', 'change_amount', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             } elseif ($invoice_settings->size == '58mm') {
-                dd(14);
+                // dd(14);
                 return view('backend.setting.invoice_setting.58mm', compact('invoice_settings', 'lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             } elseif ($invoice_settings->size == '80mm') {
-                dd(15);
+                // dd(15);
                 return view('backend.setting.invoice_setting.80mm', compact('invoice_settings', 'lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             }
             // old invoice code
             elseif ($lims_pos_setting_data->invoice_option == 'A4') {
-                dd(16);
+                // dd(16);
                 return view('backend.sale.a4_invoice', compact('lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'paid_by_info', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             } elseif ($lims_sale_data->sale_type == 'online') {
-                dd(17);
+                // dd(17);
                 return view('backend.sale.a4_invoice', compact('lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'paid_by_info', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             } elseif ($lims_pos_setting_data->invoice_option == 'thermal' && $lims_pos_setting_data->thermal_invoice_size == '58') {
-                dd(18);
+                // dd(18);
                 return view('backend.sale.invoice58', compact('lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             } else {
-                dd(19);
+                // dd(19);
                 return view('backend.sale.invoice', compact('lims_sale_data', 'currency_code', 'lims_product_sale_data', 'lims_biller_data', 'lims_warehouse_data', 'lims_customer_data', 'lims_payment_data', 'numberInWords', 'sale_custom_fields', 'customer_custom_fields', 'product_custom_fields', 'qrText', 'totalDue', 'lims_bill_by'));
             }
 

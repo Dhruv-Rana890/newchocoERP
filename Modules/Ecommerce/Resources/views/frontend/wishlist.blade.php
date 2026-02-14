@@ -58,17 +58,18 @@
                                                         <a class="remove-from-wishlist" data-id="{{$product->id}}" style="font-size:16px;opacity:0.5">
                                                             <span class="material-symbols-outlined">delete</span>
                                                         </a>
+                                                        @php $defaultProductImg = asset('frontend/images/default-product.svg'); @endphp
                                                         @if($product->image!==null)
                                                         @php
                                                             $images = explode(',', $product->image);
                                                             $product->image = $images[0];
                                                         @endphp
                                                         <a href="{{url('product')}}/{{$product->slug}}/{{$product->id}}" class="view-details ml-2 mr-2">
-                                                            <img style="width:50px;" loading="lazy" class="product-img" data-src="{{ url('images/product/small/') }}/{{ $product->image }}" alt="{{ $product->name }}">
+                                                            <img style="width:50px;" loading="lazy" class="product-img" data-src="{{ url('images/product/small/') }}/{{ $product->image }}" alt="{{ $product->name }}" onerror="this.src='{{ $defaultProductImg }}'; this.onerror=null;">
                                                         </a>
                                                         @else
                                                         <a href="{{url('product')}}/{{$product->slug}}/{{$product->id}}" class="view-details ml-2 mr-2">
-                                                            <img loading="lazy" src="https://dummyimage.com/50x50/e5e8ec/e5e8ec&text={{ $product->name }}" alt="{{ $product->name }}">
+                                                            <img style="width:50px;" loading="lazy" class="product-img" src="{{ $defaultProductImg }}" alt="{{ $product->name }}">
                                                         </a>
                                                         @endif
                                                         <div>

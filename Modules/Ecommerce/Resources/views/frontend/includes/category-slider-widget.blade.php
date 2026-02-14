@@ -4,6 +4,7 @@
         }else{
             $parent_categories = DB::table('categories')->where('is_active', true)->whereIn('id',explode(',',$widget->category_slider_ids))->get();
         }
+        $defaultImg = asset('frontend/images/default-product.svg');
     @endphp
     <section class="category-tab-section mb-3">
         <div class="container-fluid" style="overflow-x:hidden">
@@ -27,15 +28,15 @@
                                 <div class="category-container">
                                     @if(isset($ecommerce_setting->theme) && $ecommerce_setting->theme == 'fashion')
                                         @if($category->image!==null)
-                                            <img loading="lazy" class="category-img" data-src="{{ url('images/category/large') }}/{{ $category->image }}" alt="{{ $category->name }}">
+                                            <img loading="lazy" class="category-img" data-src="{{ url('images/category/large') }}/{{ $category->image }}" alt="{{ $category->name }}" onerror="this.src='{{ $defaultImg }}'; this.onerror=null;">
                                         @else
-                                            <img loading="lazy" src="https://dummyimage.com/100x100/e5e8ec/e5e8ec&text={{ $category->name }}" alt="{{ $category->name }}">
+                                            <img loading="lazy" class="category-img" src="{{ $defaultImg }}" alt="{{ $category->name }}">
                                         @endif
                                     @else
                                         @if($category->icon!==null)
-                                            <img loading="lazy" class="category-img" data-src="{{ url('images/category/icons/') }}/{{ $category->icon }}" alt="{{ $category->name }}">
+                                            <img loading="lazy" class="category-img" data-src="{{ url('images/category/icons/') }}/{{ $category->icon }}" alt="{{ $category->name }}" onerror="this.src='{{ $defaultImg }}'; this.onerror=null;">
                                         @else
-                                            <img loading="lazy" src="https://dummyimage.com/100x100/e5e8ec/e5e8ec&text={{ $category->name }}" alt="{{ $category->name }}">
+                                            <img loading="lazy" class="category-img" src="{{ $defaultImg }}" alt="{{ $category->name }}">
                                         @endif
                                     @endif
 

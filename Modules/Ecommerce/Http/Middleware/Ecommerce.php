@@ -79,12 +79,12 @@ class Ecommerce
             View::share('social_links', $social_links);
 
 
-            //setting language
-            if(isset($_COOKIE['language'])) {
+            //setting language - validate to prevent InvalidArgumentException (e.g. corrupted base64 in cookie)
+            $supportedLocales = array_keys(config('website.supported_locales', ['en' => [], 'ar' => []]));
+            if (isset($_COOKIE['language']) && in_array($_COOKIE['language'], $supportedLocales)) {
                 \App::setLocale($_COOKIE['language']);
-            }
-            else {
-                \App::setLocale('en');
+            } else {
+                \App::setLocale(config('website.default_locale', 'en'));
             }
 
             $currency = Cache::remember('currency', 60*60*24*365, function () {

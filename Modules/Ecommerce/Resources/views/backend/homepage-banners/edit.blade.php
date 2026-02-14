@@ -61,6 +61,21 @@
                                         <input type="text" name="cta_link" class="form-control" value="{{ old('cta_link', $banner->cta_link) }}">
                                     </div>
                                 </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Slider Type</label>
+                                        <select name="slider_type" class="form-control">
+                                            <option value="image" @if(($banner->slider_type ?? 'image')=='image') selected @endif>Image (single or multi)</option>
+                                            <option value="video" @if(($banner->slider_type ?? '')=='video') selected @endif>Video</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 slider-video-field">
+                                    <div class="form-group">
+                                        <label>Video URL (MP4)</label>
+                                        <input type="text" name="video_url" class="form-control" value="{{ old('video_url', $banner->video_url ?? '') }}" placeholder="https://...">
+                                    </div>
+                                </div>
                                 <div class="col-md-12">
                                     <div class="form-group">
                                         <label>{{ __('db.Image') }}</label>

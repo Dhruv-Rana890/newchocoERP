@@ -61,6 +61,21 @@
                                         <input type="text" name="cta_link" class="form-control" value="{{ old('cta_link') }}" placeholder="/shop/valentines">
                                     </div>
                                 </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Slider Type</label>
+                                        <select name="slider_type" class="form-control">
+                                            <option value="image" {{ old('slider_type','image')=='image' ? 'selected' : '' }}>Image</option>
+                                            <option value="video" {{ old('slider_type')=='video' ? 'selected' : '' }}>Video</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Video URL (MP4)</label>
+                                        <input type="text" name="video_url" class="form-control" value="{{ old('video_url') }}" placeholder="https://...">
+                                    </div>
+                                </div>
                                 <div class="col-md-12">
                                     <div class="form-group">
                                         <label>{{ __('db.Image') }}</label>

@@ -62,6 +62,8 @@ class EcommerceSettingController extends Controller
             'fb_pixel_code'       => $request->fb_pixel_code,
             'tktk_pixel_code'     => $request->tktk_pixel_code,
             'gift_card'           => $request->gift_card,
+            'header_announcement'  => $request->header_announcement,
+            'header_announcement_ar' => $request->header_announcement_ar,
         ];
 
         if(!isset($request->gift_card)){

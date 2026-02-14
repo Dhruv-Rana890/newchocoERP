@@ -533,10 +533,12 @@ class FrontController extends Controller
     public function setLocale($locale)
     {
         $supported = array_keys(config('website.supported_locales', ['en' => [], 'ar' => []]));
+        $locale = is_string($locale) ? trim($locale) : '';
         if (in_array($locale, $supported)) {
             return redirect()->back()->cookie('language', $locale, 60 * 24 * 365);
         }
-        return redirect()->back();
+        // Clear bad cookie if invalid locale (e.g. base64 junk)
+        return redirect()->back()->cookie('language', 'en', 60 * 24 * 365);
     }
 
     public function reviewStore(Request $request){
