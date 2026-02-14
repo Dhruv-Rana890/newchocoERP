@@ -58,16 +58,18 @@ class FrontController extends Controller
     {
         $page = DB::table('pages')->where('slug', $slug)->where('status', 1)->first();
 
-        if(isset($page)){
-            if($page->template == 'faq'){
-                $categories = DB::table('faq_categories')->orderBy('order','ASC')->get();
-                $faqs = DB::table('faqs')->orderBy('order','ASC')->get();
-                return view('ecommerce::frontend.faq', compact('page','faqs','categories'));
-            }
+        if (!$page) {
+            abort(404);
+        }
 
-            if($page->template == 'contact'){
-                return view('ecommerce::frontend.contact', compact('page'));
-            }
+        if ($page->template == 'faq') {
+            $categories = DB::table('faq_categories')->orderBy('order','ASC')->get();
+            $faqs = DB::table('faqs')->orderBy('order','ASC')->get();
+            return view('ecommerce::frontend.faq', compact('page','faqs','categories'));
+        }
+
+        if ($page->template == 'contact') {
+            return view('ecommerce::frontend.contact', compact('page'));
         }
 
         return view('ecommerce::frontend.page-show', compact('page'));

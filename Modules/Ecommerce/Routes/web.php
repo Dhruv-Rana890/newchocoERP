@@ -243,9 +243,10 @@
 			Route::get('/blog', [FrontController::class, 'blog']);
 			Route::get('/blog/{slug}', [FrontController::class, 'blogPost']);
 
-    		// Pages (exclude website locales so /en etc. don't loop)
+    		// Pages (exclude website locales + auth routes like login, register, dashboard)
     		$locales = array_keys(config('website.supported_locales', ['en' => []]));
-    		Route::get('/{slug}', [FrontController::class, 'page'])->where('slug', '(?!' . implode('$|', $locales) . '$).+');
+    		$reserved = array_merge($locales, ['login', 'register', 'dashboard', 'home', 'password']);
+    		Route::get('/{slug}', [FrontController::class, 'page'])->where('slug', '(?!' . implode('$|', $reserved) . '$).+');
     	});
 
 		//Route::middleware(['ecommerce','customerauth', InitializeTenancyByDomain::class,PreventAccessFromCentralDomains::class])->prefix('customer')->group(function () {
@@ -480,9 +481,10 @@
 			Route::get('/blog', [FrontController::class, 'blog']);
 			Route::get('/blog/{slug}', [FrontController::class, 'blogPost']);
 
-    		// Pages (exclude website locales so /en etc. don't loop)
+    		// Pages (exclude website locales + auth routes like login, register, dashboard)
     		$locales = array_keys(config('website.supported_locales', ['en' => []]));
-    		Route::get('/{slug}', [FrontController::class, 'page'])->where('slug', '(?!' . implode('$|', $locales) . '$).+');
+    		$reserved = array_merge($locales, ['login', 'register', 'dashboard', 'home', 'password']);
+    		Route::get('/{slug}', [FrontController::class, 'page'])->where('slug', '(?!' . implode('$|', $reserved) . '$).+');
     	});
 
     	//Route::middleware(['ecommerce','customerauth'])->prefix('customer')->group(function () {
