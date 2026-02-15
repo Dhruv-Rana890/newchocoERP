@@ -46,6 +46,7 @@ class StoreCategoryRequest extends FormRequest
                 }),
             ],
             'featured' => 'nullable|boolean',
+            'show_in_menu' => 'nullable|boolean',
             'page_title' => 'nullable|string|max:255',
             'short_description' => 'nullable|string|max:1000',
         ];

@@ -10,6 +10,7 @@
                     <ul id="product" class="collapse list-unstyled ">
                         @can('categories-index')
                             <li id="category-menu"><a href="{{ route('category.index') }}">{{ __('db.category') }}</a></li>
+                            <li id="subcategory-menu"><a href="{{ route('subcategory.index') }}">{{ __('Subcategory') }}</a></li>
                         @endcan
                         @can('brand')
                             <li id="brand-menu"><a href="{{ route('brand.index') }}">{{ __('db.Brand') }}</a></li>

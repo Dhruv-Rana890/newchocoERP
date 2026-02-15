@@ -1105,11 +1105,7 @@ if (session()->get('currency_code')) {
             @endif
         });
 
-        var current_currency = $('#current-currency').html();
-        exchangeCurrency(current_currency);
-        /* console.log(current_currency) */
-
-
+        /* Only run exchangeCurrency when user actually changes currency (not on page load – avoids error when #current-currency is missing e.g. chocolat theme) */
         /* change currency */
             $(document).on('click', '.change-currency', function(e) {
                 e.preventDefault();

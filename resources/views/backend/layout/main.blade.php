@@ -625,6 +625,7 @@
         </div>
         <!-- end notification modal -->
 
+        <style>.switch{position:relative;display:inline-block;width:36px;height:20px}.switch input{opacity:0;width:0;height:0}.switch .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;transition:.3s;border-radius:20px}.switch .slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.3)}.switch input:checked+.slider{background:#28a745}.switch input:checked+.slider:before{transform:translateX(16px)}</style>
         <!-- Category Modal -->
         <div id="category-modal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
             aria-hidden="true" class="modal fade text-left">
@@ -683,6 +684,10 @@
                                 <div class="col-md-6 form-group">
                                     <input class="mt-5" type="checkbox" name="featured" id="featured"
                                         value="1"> <label>{{ __('List on category dropdown') }}</label>
+                                </div>
+                                <div class="col-md-6 form-group d-flex align-items-center">
+                                    <label class="switch mb-0 mr-2"><input type="checkbox" name="show_in_menu" id="show_in_menu_add" value="1"><span class="slider round"></span></label>
+                                    <label for="show_in_menu_add" class="mb-0">{{ __('Show in website navbar') }}</label>
                                 </div>
                             @endif
                         </div>

@@ -55,7 +55,7 @@
                     <div class="chocolat-hero-img-carousel w-full" data-images='@json($imgList)' data-interval="4000">
                         @foreach($imgList as $i => $img)
                         <div class="chocolat-hero-img-slide {{ $i === 0 ? 'active' : '' }}">
-                            <img src="{{ url('frontend/images/hero/' . $img) }}" alt="" class="w-full h-[400px] md:h-[500px] object-cover" onerror="this.src='{{ $defaultImg }}'">
+                            <img src="{{ url('frontend/images/hero/' . $img) }}" alt="" class="w-full h-[400px] md:h-[500px] object-cover" loading="{{ $i === 0 ? 'eager' : 'lazy' }}" onerror="this.src='{{ $defaultImg }}'">
                         </div>
                         @endforeach
                     </div>
@@ -164,9 +164,9 @@
                     <div class="aspect-square relative bg-gray-100">
                         @if(!empty($product->image))
                         @php $img = is_string($product->image) ? explode(',', $product->image)[0] : $product->image; @endphp
-                        <img src="{{ url('images/product/large/' . $img) }}" alt="{{ $product->name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.src='{{ $defaultImg }}'">
+                        <img src="{{ url('images/product/large/' . $img) }}" alt="{{ $product->name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" onerror="this.src='{{ $defaultImg }}'">
                         @else
-                        <img src="{{ $defaultImg }}" alt="{{ $product->name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                        <img src="{{ $defaultImg }}" alt="{{ $product->name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
                         @endif
                         @if(($product->promotion ?? 0) == 1 && (empty($product->last_date) || ($product->last_date ?? '') > date('Y-m-d')))
                         <span class="absolute top-2 {{ $isRtl ? 'right' : 'left' }}-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded">

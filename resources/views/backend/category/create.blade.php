@@ -1,5 +1,23 @@
 @extends('backend.layout.main') @section('content')
 
+@push('css')
+<style>
+.switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 20px; }
+.slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+input:checked + .slider { background-color: #28a745; }
+input:checked + .slider:before { transform: translateX(16px); }
+.slider.round { border-radius: 20px; }
+.slider.round:before { border-radius: 50%; }
+#menu-categories-sortable { list-style: none; padding: 0; margin: 0; }
+#menu-categories-sortable .list-group-item { cursor: move; display: flex; align-items: center; padding: 0.65rem 0.85rem; }
+#menu-categories-sortable .list-group-item .drag-handle { color: #6c757d; margin-right: 0.5rem; }
+#menu-categories-sortable .list-group-item.ui-sortable-helper { box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+</style>
+@endpush
+
+
 <x-success-message key="message" />
 <x-error-message key="not_permitted" />
 
@@ -12,6 +30,9 @@
         @can('categories-import')
             <button class="btn btn-primary" data-toggle="modal" data-target="#importCategory"><i class="dripicons-copy"></i> {{__('db.Import Category')}}</button>
         @endcan
+        @if(in_array('ecommerce', explode(',', $general_setting->modules ?? '')) && \Schema::hasColumn('categories', 'show_in_menu'))
+            <button type="button" class="btn btn-outline-secondary" id="btn-arrange-navbar-menu" data-toggle="modal" data-target="#arrangeMenuModal"><i class="dripicons-move"></i> {{ __('Arrange navbar menu') }}</button>
+        @endif
     </div>
     <div class="table-responsive">
         <table id="category-table" class="table" style="width: 100%">
@@ -20,6 +41,7 @@
                     <th class="not-exported"></th>
                     <th>{{__('db.category')}}</th>
                     <th>{{__('db.Parent Category')}}</th>
+                    <th class="not-exported">{{ __('Show in navbar') }}</th>
                     <th>{{__('db.Number of Product')}}</th>
                     <th>{{__('db.Stock Quantity')}}</th>
                     <th>{{__('db.Stock Worth') . '(' . __('db.Price') . '/' . __('db.Cost') . ')'}}</th>
@@ -94,6 +116,10 @@
                 <br>
                 <input type="checkbox" name="featured" id="featured" value="1"> <label>{{ __('List on category dropdown') }}</label>
             </div>
+            <div class="col-md-6 form-group d-flex align-items-center">
+                <label class="switch mb-0 mr-2"><input type="checkbox" name="show_in_menu" id="show_in_menu" value="1"><span class="slider round"></span></label>
+                <label for="show_in_menu" class="mb-0">{{ __('Show in website navbar') }}</label>
+            </div>
             @endif
         </div>
         @if(in_array('ecommerce',explode(',',$general_setting->modules)))
@@ -155,6 +181,27 @@
     </div>
 </div>
 
+<!-- Arrange Navbar Menu Modal -->
+<div id="arrangeMenuModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="arrangeMenuModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content shadow-sm border-0">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="arrangeMenuModalLabel"><i class="dripicons-view-list text-primary mr-2"></i>{{ __('Arrange navbar menu') }}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body pt-2">
+                <p class="text-muted small mb-3">{{ __('Drag items to reorder. This order will appear on the website navbar.') }}</p>
+                <div id="menu-categories-loading" class="text-center py-4 text-muted"><i class="dripicons-loading dripicons-spin"></i> {{ __('Loading...') }}</div>
+                <ul id="menu-categories-sortable" class="list-group list-group-flush d-none"></ul>
+                <div id="menu-categories-empty" class="alert alert-light border text-muted text-center d-none">{{ __('No categories are set to show in navbar. Enable "Show in navbar" for categories first.') }}</div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{{ __('Cancel') }}</button>
+                <button type="button" class="btn btn-primary" id="menu-categories-save"><i class="dripicons-checkmark mr-1"></i>{{ __('Save order') }}</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @endsection
 @push('scripts')
@@ -181,6 +228,7 @@
     $(document).on("click", ".open-EditCategoryDialog", function(){
         $("#editModal input[name='is_sync_disable']").prop("checked", false);
         $("#editModal input[name='featured']").prop("checked", false);
+        $("#editModal input[name='show_in_menu']").prop("checked", false);
         var url ="category/";
         var id = $(this).data('id').toString();
         url = url.concat(id).concat("/edit");
@@ -198,10 +246,65 @@
             if (data['featured']) {
                 $("#editModal input[name='featured']").prop("checked", true);
             }
+            if (data['show_in_menu']) {
+                $("#editModal input[name='show_in_menu']").prop("checked", true);
+            }
             $("#editModal input[name='page_title']").val(data['page_title']);
             $("#editModal input[name='short_description']").val(data['short_description']);
             $('.selectpicker').selectpicker('refresh');
         });
+    });
+
+    $(document).on('change', '.toggle-show-in-menu', function() {
+        var chk = $(this);
+        var id = chk.data('id');
+        var showInMenu = chk.prop('checked') ? 1 : 0;
+        chk.prop('disabled', true);
+        $.post('{{ url("category/toggle-show-in-menu") }}', { _token: '{{ csrf_token() }}', category_id: id, show_in_menu: showInMenu })
+            .done(function(r) {
+                if (r.success && showInMenu && r.over_max) { alert('Max {{ \App\Http\Controllers\CategoryController::MAX_MENU_CATEGORIES }} categories in navbar. Oldest was auto-disabled.'); }
+            })
+            .fail(function() { chk.prop('checked', !showInMenu); })
+            .always(function() { chk.prop('disabled', false); });
+    });
+
+    var menuCategoriesSortable = null;
+    $('#arrangeMenuModal').on('show.bs.modal', function() {
+        $('#menu-categories-loading').removeClass('d-none');
+        $('#menu-categories-sortable').addClass('d-none').empty();
+        $('#menu-categories-empty').addClass('d-none');
+        $.get('{{ url("category/menu-categories") }}')
+            .done(function(r) {
+                $('#menu-categories-loading').addClass('d-none');
+                if (r.categories && r.categories.length) {
+                    r.categories.forEach(function(c) {
+                        $('#menu-categories-sortable').append(
+                            '<li class="list-group-item" data-id="' + c.id + '"><i class="dripicons-move drag-handle"></i><span>' + (c.name || '') + '</span></li>'
+                        );
+                    });
+                    $('#menu-categories-sortable').removeClass('d-none');
+                    if (menuCategoriesSortable) { $('#menu-categories-sortable').sortable('destroy'); }
+                    $('#menu-categories-sortable').sortable({ handle: '.drag-handle', placeholder: 'list-group-item list-group-item-secondary', forcePlaceholderSize: true });
+                } else {
+                    $('#menu-categories-empty').removeClass('d-none');
+                }
+            })
+            .fail(function() {
+                $('#menu-categories-loading').addClass('d-none');
+                $('#menu-categories-empty').removeClass('d-none').text('{{ __("Failed to load categories.") }}');
+            });
+    });
+
+    $('#menu-categories-save').on('click', function() {
+        var ids = [];
+        $('#menu-categories-sortable .list-group-item').each(function() { ids.push(parseInt($(this).data('id'), 10)); });
+        if (!ids.length) return;
+        var btn = $(this).prop('disabled', true);
+        $.post('{{ url("category/save-menu-order") }}', { _token: '{{ csrf_token() }}', order: ids })
+            .done(function(r) {
+                if (r.success) { $('#arrangeMenuModal').modal('hide'); $('#category-table').DataTable().ajax.reload(null, false); }
+            })
+            .always(function() { btn.prop('disabled', false); });
     });
 
     $('#category-table').DataTable( {
@@ -219,6 +322,7 @@
             {"data": "key"},
             {"data": "name"},
             {"data": "parent_id"},
+            {"data": "show_in_menu"},
             {"data": "number_of_product"},
             {"data": "stock_qty"},
             {"data": "stock_worth"},
@@ -237,7 +341,7 @@
         'columnDefs': [
             {
                 "orderable": false,
-                'targets': [0, 1, 3, 4, 5, 6]
+                'targets': [0, 1, 2, 3, 4, 5, 6]
             },
             {
                 'render': function(data, type, row, meta){

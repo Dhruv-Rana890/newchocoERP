@@ -80,23 +80,28 @@ class EcommerceController extends Controller
     }
 
     public function changeCurrency(Request $request){
-        $currency = Currency::where('code', $request->code)->first();
-        $subTotal = session()->has('subTotal') ? session()->get('subTotal') : 0;
-        if ($currency) {
-            session([
-                'currency_code' => $currency->code,
-                'currency_rate' => $currency->rate,
-                'currency_symbol' => $currency->symbol,
-                'subTotal' => $subTotal,
-            ]);
+        $code = $request->input('code');
+        if (empty($code)) {
+            return response()->json(['success' => false, 'message' => 'Currency code required'], 400);
         }
-        return response()->json(
-            [
-                'success' => true,
-                'code' => $currency->symbol ?? $currency->code,
-                'exchange_rate' => $currency->exchange_rate,
-                'subTotal' => $subTotal,
-                'message' => 'Currency changed successfully'
+        $currency = Currency::where('code', $code)->first();
+        if (!$currency) {
+            return response()->json(['success' => false, 'message' => 'Currency not found'], 404);
+        }
+        $subTotal = session()->has('subTotal') ? session()->get('subTotal') : 0;
+        $rate = $currency->exchange_rate ?? $currency->rate ?? 1;
+        session([
+            'currency_code' => $currency->code,
+            'currency_rate' => $rate,
+            'currency_symbol' => $currency->symbol,
+            'subTotal' => $subTotal,
+        ]);
+        return response()->json([
+            'success' => true,
+            'code' => $currency->symbol ?? $currency->code,
+            'exchange_rate' => $rate,
+            'subTotal' => $subTotal,
+            'message' => 'Currency changed successfully'
         ]);
 
     }

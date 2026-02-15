@@ -23,6 +23,9 @@ class CategoryController extends Controller
     use CacheForget;
     use TenantInfo;
 
+    /** Max categories allowed in website navbar (oldest auto-disabled when exceeding) */
+    const MAX_MENU_CATEGORIES = 10;
+
     public function index()
     {
         $role = Role::find(Auth::user()->role_id);
@@ -45,7 +48,8 @@ class CategoryController extends Controller
             0 =>'id',
             2 =>'name',
             3=> 'parent_id',
-            4=> 'is_active',
+            4=> 'show_in_menu',
+            5=> 'is_active',
         );
 
         // Only get product categories (not raw materials)
@@ -112,6 +116,9 @@ class CategoryController extends Controller
                     $nestedData['parent_id'] = Category::find($category->parent_id)->name;
                 else
                     $nestedData['parent_id'] = "N/A";
+
+                $checked = isset($category->show_in_menu) && $category->show_in_menu;
+                $nestedData['show_in_menu'] = '<label class="switch mb-0"><input type="checkbox" class="toggle-show-in-menu" data-id="'.$category->id.'" '.($checked ? 'checked' : '').'><span class="slider round"></span></label>';
 
                 $nestedData['number_of_product'] = $category->product()->where('is_active', true)->count();
                 $nestedData['stock_qty'] = $category->product()->where('is_active', true)->sum('qty');
@@ -217,16 +224,116 @@ class CategoryController extends Controller
             } else {
                 $lims_category_data['featured'] = 0;
             }
+            if(\Schema::hasColumn('categories', 'show_in_menu')) {
+                $lims_category_data['show_in_menu'] = $request->show_in_menu ? 1 : 0;
+            }
             $lims_category_data['page_title'] = $request->page_title;
             $lims_category_data['short_description'] = $request->short_description;
         }
         $category = Category::create($lims_category_data);
-
+        if (\Schema::hasColumn('categories', 'show_in_menu') && !empty($lims_category_data['show_in_menu'])) {
+            $this->assignMenuSortOrder($category);
+            $this->ensureMaxMenuCategories();
+        }
         $this->cacheForget('category_list');
         if($lims_category_data['ajax'])
             return $category;
         else
             return redirect('category')->with('message', __('db.Category inserted successfully'));
+    }
+
+    /**
+     * Keep only MAX_MENU_CATEGORIES with show_in_menu=1; disable oldest by menu_sort_order then updated_at. Returns number disabled.
+     */
+    private function ensureMaxMenuCategories()
+    {
+        if (!\Schema::hasColumn('categories', 'show_in_menu')) {
+            return 0;
+        }
+        $count = Category::where('is_active', true)
+            ->where(function ($q) { $q->whereNull('type')->orWhere('type', 'product'); })
+            ->where('show_in_menu', 1)->count();
+        if ($count <= self::MAX_MENU_CATEGORIES) {
+            return 0;
+        }
+        $q = Category::where('is_active', true)
+            ->where(function ($q) { $q->whereNull('type')->orWhere('type', 'product'); })
+            ->where('show_in_menu', 1);
+        if (\Schema::hasColumn('categories', 'menu_sort_order')) {
+            $q->orderByRaw('COALESCE(menu_sort_order, 999999) ASC');
+        }
+        $oldest = $q->orderBy('updated_at')->orderBy('id')
+            ->skip(self::MAX_MENU_CATEGORIES)
+            ->take($count - self::MAX_MENU_CATEGORIES)
+            ->pluck('id');
+        if ($oldest->isNotEmpty()) {
+            Category::whereIn('id', $oldest)->update(['show_in_menu' => 0]);
+            return $oldest->count();
+        }
+        return 0;
+    }
+
+    public function toggleShowInMenu(Request $request)
+    {
+        $request->validate(['category_id' => 'required|exists:categories,id', 'show_in_menu' => 'required|in:0,1']);
+        $category = Category::where('id', $request->category_id)
+            ->where(function ($q) { $q->whereNull('type')->orWhere('type', 'product'); })
+            ->first();
+        if (!$category) {
+            return response()->json(['success' => false, 'message' => 'Category not found'], 404);
+        }
+        $showInMenu = (int) $request->show_in_menu;
+        $category->show_in_menu = $showInMenu;
+        $category->save();
+        $overMax = 0;
+        if ($showInMenu === 1) {
+            $this->assignMenuSortOrder($category);
+            $overMax = $this->ensureMaxMenuCategories();
+        }
+        $this->cacheForget('category_list');
+        return response()->json(['success' => true, 'show_in_menu' => $category->fresh()->show_in_menu, 'over_max' => $overMax > 0]);
+    }
+
+    /** Set menu_sort_order to end when enabling show_in_menu */
+    private function assignMenuSortOrder($category)
+    {
+        if (!\Schema::hasColumn('categories', 'menu_sort_order')) {
+            return;
+        }
+        $max = Category::where('is_active', true)
+            ->where(function ($q) { $q->whereNull('type')->orWhere('type', 'product'); })
+            ->max('menu_sort_order');
+        $category->menu_sort_order = (int) $max + 1;
+        $category->save();
+    }
+
+    /** Get categories that are shown in navbar (for arrange modal) */
+    public function getMenuCategories()
+    {
+        if (!\Schema::hasColumn('categories', 'show_in_menu')) {
+            return response()->json(['categories' => []]);
+        }
+        $categories = Category::where('is_active', true)
+            ->where(function ($q) { $q->whereNull('type')->orWhere('type', 'product'); })
+            ->where('show_in_menu', 1)
+            ->orderByRaw('COALESCE(menu_sort_order, 999999) ASC')
+            ->orderBy('id')
+            ->get(['id', 'name', 'slug', 'menu_sort_order']);
+        return response()->json(['categories' => $categories]);
+    }
+
+    /** Save navbar menu order (ordered list of category ids) */
+    public function saveMenuOrder(Request $request)
+    {
+        $request->validate(['order' => 'required|array', 'order.*' => 'required|integer|exists:categories,id']);
+        if (!\Schema::hasColumn('categories', 'menu_sort_order')) {
+            return response()->json(['success' => false, 'message' => 'Column not available'], 400);
+        }
+        foreach ($request->order as $position => $id) {
+            Category::where('id', $id)->update(['menu_sort_order' => $position]);
+        }
+        $this->cacheForget('category_list');
+        return response()->json(['success' => true, 'message' => __('Order saved.')]);
     }
 
     public function edit($id)
@@ -269,6 +376,9 @@ class CategoryController extends Controller
 
         $input = $request->except('image','icon','_method','_token','category_id');
         $input['type'] = 'product'; // Ensure type is set to product
+        if(!isset($request->show_in_menu) && \Schema::hasColumn('categories', 'show_in_menu')) {
+            $input['show_in_menu'] = 0;
+        }
 
         $image = $request->image;
         if ($image) {
@@ -332,11 +442,19 @@ class CategoryController extends Controller
             } else {
                 $input['featured'] = 0;
             }
+            if(\Schema::hasColumn('categories', 'show_in_menu')) {
+                $input['show_in_menu'] = $request->show_in_menu ? 1 : 0;
+            }
             $input['page_title'] = $request->page_title;
             $input['short_description'] = $request->short_description;
         }
 
-        Category::where('id', $request->category_id)->update($input);
+        $category = Category::find($request->category_id);
+        $category->update($input);
+        if (\Schema::hasColumn('categories', 'show_in_menu') && !empty($input['show_in_menu'])) {
+            $this->assignMenuSortOrder($category);
+            $this->ensureMaxMenuCategories();
+        }
         $this->cacheForget('category_list');
         
         return redirect('category')->with('message', __('db.Category updated successfully'));

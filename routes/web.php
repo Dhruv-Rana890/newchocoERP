@@ -45,6 +45,7 @@ use App\Http\Controllers\WarehouseStoreController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\AccountsController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\SubcategoryController;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DeliveryController;
@@ -400,9 +401,16 @@ Route::group(['middleware' => ['common', 'auth', 'active']], function() {
         Route::post('category/import', 'import')->name('category.import');
         Route::post('category/deletebyselection', 'deleteBySelection');
         Route::post('category/category-data', 'categoryData');
+        Route::post('category/toggle-show-in-menu', 'toggleShowInMenu')->name('category.toggle-show-in-menu');
+        Route::get('category/menu-categories', 'getMenuCategories')->name('category.menu-categories');
+        Route::post('category/save-menu-order', 'saveMenuOrder')->name('category.save-menu-order');
     });
     Route::resource('category', CategoryController::class);
 
+    Route::controller(SubcategoryController::class)->group(function () {
+        Route::post('subcategory/subcategory-data', 'subcategoryData')->name('subcategory.data');
+    });
+    Route::resource('subcategory', SubcategoryController::class);
 
     Route::controller(BrandController::class)->group(function () {
         Route::post('importbrand', 'importBrand')->name('brand.import');
