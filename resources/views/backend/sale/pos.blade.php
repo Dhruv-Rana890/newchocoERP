@@ -485,11 +485,7 @@
                 </div>
 
                 <div class="col-md-7 pos-form">
-                    @if(isset($lims_sale_data) && $lims_sale_data)
-                        {!! Form::model($lims_sale_data, ['route' => ['sales.update', $lims_sale_data->id], 'method' => 'put', 'files' => true, 'class' => 'payment-form']) !!}
-                    @else
-                        {!! Form::open(['route' => 'sales.store', 'method' => 'post', 'files' => true, 'class' => 'payment-form']) !!}
-                    @endif
+                    {!! Form::open(['route' => 'sales.store', 'method' => 'post', 'files' => true, 'class' => 'payment-form']) !!}
 
                     @php
                         if ($lims_pos_setting_data) {
@@ -855,7 +851,7 @@
                                                 type="info" /></label>
                                         <div class="form-group">
                                             <input type="text" id="reference-no" class="form-control" readonly
-                                                placeholder="—" style="background-color: #f5f5f5;" />
+                                                placeholder="—" style="background-color: #f5f5f5;"/>
                                         </div>
                                         <x-validation-error fieldName="reference_no" />
                                     </div>
@@ -1002,7 +998,7 @@
                             <table id="myTable" class="table table-hover table-striped order-list table-fixed">
                                 <thead class="d-none d-md-block">
                                     <tr>
-                                        <th class="customize-parent-col" style="width:36px; @if(!isset($lims_sale_data) || empty($lims_sale_data) || ($lims_sale_data->order_type ?? 1) != 2) display:none; @endif"></th>
+                                        <th class="customize-parent-col" style="width:36px; display:none;"></th>
                                         <th class="col-sm-5 col-6">{{ __('db.product') }}</th>
                                         <th class="col-sm-2 d-none d-md-table-cell">{{ __('db.Price') }}</th>
                                         <th class="col-sm-2">{{ __('db.Quantity') }}</th>
@@ -3396,7 +3392,7 @@
                     }
                 });
             @endif
-
+            
             var customer_id = $('#customer_id').val();
             var cus_gr_rt = await $.get('{{ url('sales/getcustomergroup') }}/' + customer_id);
             customer_group_rate = (cus_gr_rt / 100);
@@ -3953,33 +3949,23 @@
 
         function processDraftData() {
             @if (isset($lims_sale_data))
-                var orderType2 = ($('#order_type').val() == '2');
-                // Ensure Customization UI is ready when order_type is Custom Creation
-                if (orderType2) {
-                    $('#customizetypebox').show();
-                    $('.customize-parent-col').show();
-                    $('.customize-parent-td').show();
-                    window.firstDraftParentChecked = false;
-                }
-                customizeParentCounter = 0;
-                let draft_product_data = @json($draft_product_data ?? []);
+                let draft_product_data = @json($draft_product_data);
                 var maxSort = 0;
                 draft_product_data.forEach(function(p) {
                     if (p.custom_sort != null && p.custom_sort > maxSort) maxSort = parseInt(p.custom_sort, 10);
                 });
                 if (maxSort > 0) customSortCounter = maxSort;
                 draft_product_data.forEach(function(product) {
-                    productSearch(product, true); // isDraftLoad = true to bypass "Select Tray or Box" when restoring
+                    productSearch(product);
                 });
             @endif
         }
 
-        function productSearch(productInput, isDraftLoad) {
+        function productSearch(productInput) {
             // --- FLOW: type decides merge vs new row ---
             // DISPLAY (order_type 1): Product already in cart as DISPLAY? → qty plus on that row. Else → new display row.
             // CUSTOMIZE (order_type 2): (1) Not a custom/tray product and no radio selected? → alert "Select Tray or Box".
             //   (2) Radio selected + product already inside that tray? → qty plus on that inside row. Else → new row inside selected parent.
-            if (typeof isDraftLoad === 'undefined') isDraftLoad = false;
             var item_code = productInput.code;
             var pre_qty = 0;
             var flag = true;
@@ -3996,7 +3982,7 @@
                         if (r > idx && $rows.eq(r).find('.customize-parent-radio').length) break;
                     }
                 }
-                if (!isDraftLoad && !isCustomizeParentProduct && selectedParentRowIndices.length === 0) {
+                if (!isCustomizeParentProduct && selectedParentRowIndices.length === 0) {
                     alert('{{ __("db.Select Tray or Box") }}');
                     return;
                 }
@@ -4026,12 +4012,10 @@
                 return false;
             });
             if (flag) {
-                // When loading draft/edit: use line qty from draft; else default to 1 (productInput.qty = stock qty, not order qty)
-                var useDraftQty = isDraftLoad && (parseFloat(pre_qty) === 0 && productInput.qty != null && productInput.qty !== '' && !isNaN(parseFloat(productInput.qty)));
                 let product = {
                     code: productInput.code,
                     qty: productInput.qty,
-                    pre_qty: useDraftQty ? parseFloat(productInput.qty) : (parseFloat(pre_qty) || 0) + 1,
+                    pre_qty: (parseFloat(pre_qty) + 1),
                     imei: productInput.imei,
                     embedded: productInput.embedded,
                     batch: productInput.batch,
@@ -4085,13 +4069,12 @@
 
                         if (flag) {
                             var draftCustomize = null;
-                            var isDisplayRow = !(productInput.customize_type_id != null && productInput.customize_type_id !== '');
-                            if (!isDisplayRow) {
+                            if (productInput.customize_type_id != null && productInput.customize_type_id !== '') {
                                 draftCustomize = { customize_type_id: productInput.customize_type_id, custom_sort: productInput.custom_sort };
                                 if (productInput.is_customize_parent !== undefined) draftCustomize.is_customize_parent = productInput.is_customize_parent;
                             }
                             var isParentRow = (draftCustomize && draftCustomize.is_customize_parent == 1) ? true : false;
-                            addNewProduct(data, draftCustomize, isParentRow, null, isDisplayRow);
+                            addNewProduct(data, draftCustomize, isParentRow);
                         } else if (data[18] != 'null' && data[18] != '') {
                             var imeiNumbers = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')')
                                 .find('.imei-number').val();
@@ -4115,9 +4098,8 @@
         @endif
 
         var customizeParentCounter = 0;
-        function addNewProduct(data, draftCustomize, isParentRow, instanceNumber, isDisplayRow) {
+        function addNewProduct(data, draftCustomize, isParentRow, instanceNumber) {
             if (typeof isParentRow === 'undefined') isParentRow = false;
-            if (typeof isDisplayRow === 'undefined') isDisplayRow = false;
             $('.payment-btn').removeAttr('disabled');
             $('#installmentPlanBtn').removeAttr('disabled');
             var orderType2 = ($('#order_type').val() == '2');
@@ -4135,12 +4117,10 @@
                 if (requestedQty > maxStock) data[15] = maxStock;
             }
             var rowId = String(data[1]).replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + (isParentRow ? 'p' + customizeParentCounter : Date.now());
-            // Display products (no customize_type_id): pos-row-display; customize parent: pos-row-customize-parent; customize child: pos-row-customize-child
-            var rowClass = isDisplayRow ? 'pos-row-display' : (orderType2 ? (isParentRow ? 'pos-row-customize pos-row-customize-parent' : 'pos-row-customize-child') : 'pos-row-display');
+            var rowClass = orderType2 ? (isParentRow ? 'pos-row-customize pos-row-customize-parent' : 'pos-row-customize-child') : 'pos-row-display';
             var newRow = $('<tr id="' + rowId + '" class=\"' + rowClass + '\">');
             var cols = '';
             temp_unit_name = (data[6]).split(',');
-            // Add first td (customize column): parent=radio, child=—, display=empty for alignment when orderType2
             if (orderType2) {
                 $('.customize-parent-col').show();
                 if (isParentRow) {
@@ -4168,7 +4148,6 @@
             }
 
             var productTitleTdStyle = orderType2 ? '' : ' style="max-width: 345px;"';
-            // var productTitleTdStyle = (isDisplayRow || !orderType2) ? ' style="max-width: 345px;"' : '';
             if (all_permission.includes("cart-product-update")) {
                 cols +=
                     '<td class="col-sm-4 col-6 product-title"' + productTitleTdStyle + '><strong class="edit-product btn btn-link" data-toggle="modal" data-target="#editModal">' +
