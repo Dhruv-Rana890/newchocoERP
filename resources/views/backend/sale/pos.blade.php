@@ -4156,7 +4156,7 @@
                     cols += '<td class="align-middle text-center customize-parent-td">&mdash;</td>';
                 }
             } else {
-                // Display mode: no extra td (customize column hidden)
+                // Display rows: no extra td so UI stays as before (customize column only for customize rows)
             }
             //pos = product_code.indexOf(data[1]);
 
@@ -4169,7 +4169,8 @@
                 }
             }
 
-            var productTitleTdStyle = (isDisplayRow || !orderType2) ? ' style="max-width: 345px;"' : '';
+            var productTitleTdStyle = orderType2 ? '' : ' style="max-width: 345px;"';
+            // var productTitleTdStyle = (isDisplayRow || !orderType2) ? ' style="max-width: 345px;"' : '';
             if (all_permission.includes("cart-product-update")) {
                 cols +=
                     '<td class="col-sm-4 col-6 product-title"' + productTitleTdStyle + '><strong class="edit-product btn btn-link" data-toggle="modal" data-target="#editModal">' +
@@ -7194,6 +7195,16 @@
                                             $.get('{{ url('sales/recent-sale') }}', function(data) {
                                                 populateRecentSale(data);
                                             });
+                                            // Fetch next invoice when page won't reload (!whatsapp && !print does location.replace)
+                                            if (whatsappChecked || printChecked) {
+                                                $.get('{{ route('sale.nextPosInvoiceNo') }}', function(res) {
+                                                    if (res.success && res.data) {
+                                                        $('#pos-invoice-no-display').val(res.data.display_number);
+                                                        $('#pos-reference-no').val(res.data.reference_no);
+                                                        $('#reference-no').val(res.data.reference_no);
+                                                    }
+                                                });
+                                            }
                                         } else if ($('input[name="sale_status"]').val() == 3) {
                                             $('#pos-layout').prepend(
                                                 '<div class="alert alert-success alert-dismissible text-center"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>{{ __('db.Sale successfully added to draft') }}</div>'
@@ -7202,6 +7213,14 @@
                                             cancel($('table.order-list tbody tr:last').index());
                                             $.get('{{ url('sales/recent-draft') }}', function(data) {
                                                 populateRecentDraft(data);
+                                            });
+                                            // Fetch next invoice number so next sale gets unique reference_no
+                                            $.get('{{ route('sale.nextPosInvoiceNo') }}', function(res) {
+                                                if (res.success && res.data) {
+                                                    $('#pos-invoice-no-display').val(res.data.display_number);
+                                                    $('#pos-reference-no').val(res.data.reference_no);
+                                                    $('#reference-no').val(res.data.reference_no);
+                                                }
                                             });
                                         }
 
