@@ -1351,11 +1351,11 @@
                                                 <div class="row">
                                                     <div class="col-sm-6 col-xs-6">
                                                         <label>{{ __('db.Sale Note') }}</label>
-                                                        <textarea name="sale_note" id="sale_note" class="form-control kb-text skip" style="height: 40px;" placeholder="{{ __('db.Sale Note') }}" maxlength="250"></textarea>
+                                                        <textarea name="sale_note" id="sale_note" class="form-control kb-text skip" style="height: 40px;" placeholder="{{ __('db.Sale Note') }}" maxlength="250">{{ isset($lims_sale_data) ? e($lims_sale_data->sale_note ?? '') : '' }}</textarea>
                                                     </div>
                                                     <div class="col-sm-6 col-xs-6">
                                                         <label>{{ __('db.Greeting card') }}</label>
-                                                        <textarea name="staff_note" id="staffnote" class="form-control kb-text skip" style="height: 40px;" placeholder="{{ __('db.Greeting card') }}" maxlength="250"></textarea>
+                                                        <textarea name="staff_note" id="staffnote" class="form-control kb-text skip" style="height: 40px;" placeholder="{{ __('db.Greeting card') }}" maxlength="250">{{ isset($lims_sale_data) ? e($lims_sale_data->staff_note ?? '') : '' }}</textarea>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1366,24 +1366,26 @@
                                                     <div class="col-sm-6 col-xs-6">
                                                         <label for="Order Type">{{ __('db.Order Type') }}</label>
                                                         <select name="delivery_type" class="form-control selectpicker" id="posdeliverytype" required>
-                                                            <option value="" selected>{{ __('db.Select Order Type') }}</option>
-                                                            <option value="factory">Factory</option>
-                                                            <option value="baby_order_shop">Baby Order - Shop</option>
-                                                            <option value="baby_order_factory">Baby Order - Factory</option>
-                                                            <option value="gift_order_shop">Gift Order - Shop</option>
-                                                            <option value="gift_order_factory">Gift Order - Factory</option>
-                                                            <option value="shop_fixing">Shop Fixing</option>
-                                                            <option value="inshop_sales">Inshop Sales</option>
-                                                            <option value="owner">Owner-100% Discount</option>
-                                                            <option value="owner_factory">Owner 100% Discount - Factory</option>
+                                                            @php $edit_delivery_type = isset($lims_sale_data) ? ($lims_sale_data->delivery_type ?? '') : ''; @endphp
+                                                            <option value="" {{ $edit_delivery_type === '' ? 'selected' : '' }}>{{ __('db.Select Order Type') }}</option>
+                                                            <option value="factory" {{ $edit_delivery_type === 'factory' ? 'selected' : '' }}>Factory</option>
+                                                            <option value="baby_order_shop" {{ $edit_delivery_type === 'baby_order_shop' ? 'selected' : '' }}>Baby Order - Shop</option>
+                                                            <option value="baby_order_factory" {{ $edit_delivery_type === 'baby_order_factory' ? 'selected' : '' }}>Baby Order - Factory</option>
+                                                            <option value="gift_order_shop" {{ $edit_delivery_type === 'gift_order_shop' ? 'selected' : '' }}>Gift Order - Shop</option>
+                                                            <option value="gift_order_factory" {{ $edit_delivery_type === 'gift_order_factory' ? 'selected' : '' }}>Gift Order - Factory</option>
+                                                            <option value="shop_fixing" {{ $edit_delivery_type === 'shop_fixing' ? 'selected' : '' }}>Shop Fixing</option>
+                                                            <option value="inshop_sales" {{ $edit_delivery_type === 'inshop_sales' ? 'selected' : '' }}>Inshop Sales</option>
+                                                            <option value="owner" {{ $edit_delivery_type === 'owner' ? 'selected' : '' }}>Owner-100% Discount</option>
+                                                            <option value="owner_factory" {{ $edit_delivery_type === 'owner_factory' ? 'selected' : '' }}>Owner 100% Discount - Factory</option>
                                                         </select>
                                                     </div>
                                                     <div class="col-sm-6 col-xs-6">
                                                         <label for="Delivery Type">{{ __('db.Delivery Type') }}</label>
                                                         <select name="order_mode" class="form-control selectpicker" id="order_mode" required>
-                                                            <option value="" selected>{{ __('db.Select Delivery Type') }}</option>
-                                                            <option value="delivery">Delivery</option>
-                                                            <option value="self_pick_up">Self Pick Up</option>
+                                                            @php $edit_order_mode = isset($lims_sale_data) ? ($lims_sale_data->order_mode ?? '') : ''; @endphp
+                                                            <option value="" {{ $edit_order_mode === '' ? 'selected' : '' }}>{{ __('db.Select Delivery Type') }}</option>
+                                                            <option value="delivery" {{ $edit_order_mode === 'delivery' ? 'selected' : '' }}>Delivery</option>
+                                                            <option value="self_pick_up" {{ $edit_order_mode === 'self_pick_up' ? 'selected' : '' }}>Self Pick Up</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -1394,90 +1396,104 @@
                                                 <div class="row">
                                                     <div class="col-sm-6 col-xs-6">
                                                         <label for="delivery_date">{{ __('db.Delivery Date') }}</label>
-                                                        <input type="date" name="delivery_date" value="" class="form-control input-tip datetime" id="sldate" placeholder="{{ __('db.Select Date') }}">
+                                                        <input type="date" name="delivery_date" value="{{ isset($lims_sale_data) && $lims_sale_data->delivery_date ? \Carbon\Carbon::parse($lims_sale_data->delivery_date)->format('Y-m-d') : '' }}" class="form-control input-tip datetime" id="sldate" placeholder="{{ __('db.Select Date') }}">
                                                     </div>
                                                     <div class="col-sm-6 col-xs-6">
                                                         <label for="delivery_time">{{ __('db.Delivery Time') }}</label>
                                                         <select name="delivery_time" class="form-control selectpicker" id="posdeliverytime" required>
-                                                            <option value="" selected>{{ __('db.Select Time') }}</option>
-                                                            <option value="09:00 AM - 01:00 PM">09:00 AM - 01:00 PM</option>
-                                                            <option value="10:00 AM - 02:00 PM">10:00 AM - 02:00 PM</option>
-                                                            <option value="11:00 AM - 03:00 PM">11:00 AM - 03:00 PM</option>
-                                                            <option value="12:00 PM - 04:00 PM">12:00 PM - 04:00 PM</option>
-                                                            <option value="01:00 PM - 05:00 PM">01:00 PM - 05:00 PM</option>
-                                                            <option value="02:00 PM - 06:00 PM">02:00 PM - 06:00 PM</option>
-                                                            <option value="03:00 PM - 07:00 PM">03:00 PM - 07:00 PM</option>
-                                                            <option value="04:00 PM - 08:00 PM">04:00 PM - 08:00 PM</option>
-                                                            <option value="05:00 PM - 09:00 PM">05:00 PM - 09:00 PM</option>
-                                                            <option value="06:00 PM - 10:00 PM">06:00 PM - 10:00 PM</option>
-                                                            <option value="07:00 PM - 11:00 PM">07:00 PM - 11:00 PM</option>
-                                                            <option value="08:00 PM - 12:00 AM">08:00 PM - 12:00 AM</option>
+                                                            @php $edit_delivery_time = isset($lims_sale_data) ? ($lims_sale_data->delivery_time ?? '') : ''; @endphp
+                                                            <option value="" {{ $edit_delivery_time === '' ? 'selected' : '' }}>{{ __('db.Select Time') }}</option>
+                                                            <option value="09:00 AM - 01:00 PM" {{ $edit_delivery_time === '09:00 AM - 01:00 PM' ? 'selected' : '' }}>09:00 AM - 01:00 PM</option>
+                                                            <option value="10:00 AM - 02:00 PM" {{ $edit_delivery_time === '10:00 AM - 02:00 PM' ? 'selected' : '' }}>10:00 AM - 02:00 PM</option>
+                                                            <option value="11:00 AM - 03:00 PM" {{ $edit_delivery_time === '11:00 AM - 03:00 PM' ? 'selected' : '' }}>11:00 AM - 03:00 PM</option>
+                                                            <option value="12:00 PM - 04:00 PM" {{ $edit_delivery_time === '12:00 PM - 04:00 PM' ? 'selected' : '' }}>12:00 PM - 04:00 PM</option>
+                                                            <option value="01:00 PM - 05:00 PM" {{ $edit_delivery_time === '01:00 PM - 05:00 PM' ? 'selected' : '' }}>01:00 PM - 05:00 PM</option>
+                                                            <option value="02:00 PM - 06:00 PM" {{ $edit_delivery_time === '02:00 PM - 06:00 PM' ? 'selected' : '' }}>02:00 PM - 06:00 PM</option>
+                                                            <option value="03:00 PM - 07:00 PM" {{ $edit_delivery_time === '03:00 PM - 07:00 PM' ? 'selected' : '' }}>03:00 PM - 07:00 PM</option>
+                                                            <option value="04:00 PM - 08:00 PM" {{ $edit_delivery_time === '04:00 PM - 08:00 PM' ? 'selected' : '' }}>04:00 PM - 08:00 PM</option>
+                                                            <option value="05:00 PM - 09:00 PM" {{ $edit_delivery_time === '05:00 PM - 09:00 PM' ? 'selected' : '' }}>05:00 PM - 09:00 PM</option>
+                                                            <option value="06:00 PM - 10:00 PM" {{ $edit_delivery_time === '06:00 PM - 10:00 PM' ? 'selected' : '' }}>06:00 PM - 10:00 PM</option>
+                                                            <option value="07:00 PM - 11:00 PM" {{ $edit_delivery_time === '07:00 PM - 11:00 PM' ? 'selected' : '' }}>07:00 PM - 11:00 PM</option>
+                                                            <option value="08:00 PM - 12:00 AM" {{ $edit_delivery_time === '08:00 PM - 12:00 AM' ? 'selected' : '' }}>08:00 PM - 12:00 AM</option>
                                                         </select>
                                                     </div>
                                                     <div class="col-sm-6 col-xs-6">
                                                         <label for="delivery_time2">{{ __('db.Delivery Time2') }}</label>
                                                         <select name="delivery_time2" class="form-control selectpicker" id="posdeliverytime2" required>
-                                                            <option value="" selected>{{ __('db.Select Time') }}</option>
-                                                            <option value="09:00 AM - 01:00 PM">09:00 AM - 01:00 PM</option>
-                                                            <option value="10:00 AM - 02:00 PM">10:00 AM - 02:00 PM</option>
-                                                            <option value="11:00 AM - 03:00 PM">11:00 AM - 03:00 PM</option>
-                                                            <option value="12:00 PM - 04:00 PM">12:00 PM - 04:00 PM</option>
-                                                            <option value="01:00 PM - 05:00 PM">01:00 PM - 05:00 PM</option>
-                                                            <option value="02:00 PM - 06:00 PM">02:00 PM - 06:00 PM</option>
-                                                            <option value="03:00 PM - 07:00 PM">03:00 PM - 07:00 PM</option>
-                                                            <option value="04:00 PM - 08:00 PM">04:00 PM - 08:00 PM</option>
-                                                            <option value="05:00 PM - 09:00 PM">05:00 PM - 09:00 PM</option>
-                                                            <option value="06:00 PM - 10:00 PM">06:00 PM - 10:00 PM</option>
-                                                            <option value="07:00 PM - 11:00 PM">07:00 PM - 11:00 PM</option>
-                                                            <option value="08:00 PM - 12:00 AM">08:00 PM - 12:00 AM</option>
+                                                            @php $edit_delivery_time2 = isset($lims_sale_data) ? ($lims_sale_data->delivery_time2 ?? '') : ''; @endphp
+                                                            <option value="" {{ $edit_delivery_time2 === '' ? 'selected' : '' }}>{{ __('db.Select Time') }}</option>
+                                                            <option value="09:00 AM - 01:00 PM" {{ $edit_delivery_time2 === '09:00 AM - 01:00 PM' ? 'selected' : '' }}>09:00 AM - 01:00 PM</option>
+                                                            <option value="10:00 AM - 02:00 PM" {{ $edit_delivery_time2 === '10:00 AM - 02:00 PM' ? 'selected' : '' }}>10:00 AM - 02:00 PM</option>
+                                                            <option value="11:00 AM - 03:00 PM" {{ $edit_delivery_time2 === '11:00 AM - 03:00 PM' ? 'selected' : '' }}>11:00 AM - 03:00 PM</option>
+                                                            <option value="12:00 PM - 04:00 PM" {{ $edit_delivery_time2 === '12:00 PM - 04:00 PM' ? 'selected' : '' }}>12:00 PM - 04:00 PM</option>
+                                                            <option value="01:00 PM - 05:00 PM" {{ $edit_delivery_time2 === '01:00 PM - 05:00 PM' ? 'selected' : '' }}>01:00 PM - 05:00 PM</option>
+                                                            <option value="02:00 PM - 06:00 PM" {{ $edit_delivery_time2 === '02:00 PM - 06:00 PM' ? 'selected' : '' }}>02:00 PM - 06:00 PM</option>
+                                                            <option value="03:00 PM - 07:00 PM" {{ $edit_delivery_time2 === '03:00 PM - 07:00 PM' ? 'selected' : '' }}>03:00 PM - 07:00 PM</option>
+                                                            <option value="04:00 PM - 08:00 PM" {{ $edit_delivery_time2 === '04:00 PM - 08:00 PM' ? 'selected' : '' }}>04:00 PM - 08:00 PM</option>
+                                                            <option value="05:00 PM - 09:00 PM" {{ $edit_delivery_time2 === '05:00 PM - 09:00 PM' ? 'selected' : '' }}>05:00 PM - 09:00 PM</option>
+                                                            <option value="06:00 PM - 10:00 PM" {{ $edit_delivery_time2 === '06:00 PM - 10:00 PM' ? 'selected' : '' }}>06:00 PM - 10:00 PM</option>
+                                                            <option value="07:00 PM - 11:00 PM" {{ $edit_delivery_time2 === '07:00 PM - 11:00 PM' ? 'selected' : '' }}>07:00 PM - 11:00 PM</option>
+                                                            <option value="08:00 PM - 12:00 AM" {{ $edit_delivery_time2 === '08:00 PM - 12:00 AM' ? 'selected' : '' }}>08:00 PM - 12:00 AM</option>
                                                         </select>
                                                     </div>
                                                     <div class="col-sm-6 hide col-xs-6" id="receivername_block">
                                                         <div class="form-group">
                                                             <label for="Receiver_Name">{{ __('db.Receiver Name') }}</label>
-                                                            <input name="receiver_name" type="text" id="receiver_name" class="pa form-control kb-pad1 mobile_number" value="">
+                                                            <input name="receiver_name" type="text" id="receiver_name" class="pa form-control kb-pad1 mobile_number" value="{{ isset($lims_sale_data) ? e($lims_sale_data->receiver_name ?? '') : '' }}">
                                                         </div>
                                                     </div>
                                                     <div class="col-sm-6 hide col-xs-6" id="receivernumber_block">
                                                         <div class="form-group">
                                                             <label for="Receiver_Number">{{ __('db.Receiver Number') }}</label>
-                                                            <input name="receiver_number" type="text" id="receiver_number" class="pa form-control kb-pad1 mobile_number" value="">
+                                                            <input name="receiver_number" type="text" id="receiver_number" class="pa form-control kb-pad1 mobile_number" value="{{ isset($lims_sale_data) ? e($lims_sale_data->receiver_number ?? '') : '' }}">
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
 
+                                            @php
+                                                $paying_method_to_id = [
+                                                    'Cash' => '1', 'Gift Card' => '2', 'Credit Card' => '3', 'Cheque' => '4',
+                                                    'Paypal' => '5', 'Deposit' => '6', 'Points' => '7', 'Pesapal' => '8',
+                                                    'Razorpay' => 'razorpay', 'KNET' => 'knet'
+                                                ];
+                                                $edit_paid_by_value = null;
+                                                if (isset($pos_first_payment) && $pos_first_payment) {
+                                                    $pm = $pos_first_payment->paying_method ?? '';
+                                                    $edit_paid_by_value = $paying_method_to_id[$pm] ?? (strtolower($pm) === 'razorpay' ? 'razorpay' : (strtoupper($pm) === 'KNET' ? 'knet' : $pm));
+                                                }
+                                            @endphp
                                             <div class="row">
                                                 <div class="col-md-3 col-6 mt-1 paying-amount-container">
                                                     <label>{{ __('db.Paying Amount') }} *</label>
-                                                    <input type="text" name="paid_amount[]" value="0"
+                                                    <input type="text" name="paid_amount[]" value="{{ (isset($pos_first_payment) && $pos_first_payment) ? $pos_first_payment->amount : '0' }}"
                                                         class="form-control paid_amount numkey" step="any">
                                                 </div>
                                                 <div class="col-md-3 col-6 mt-1">
-                                                    <input type="hidden" name="paid_by_id[]">
+                                                    <input type="hidden" name="paid_by_id[]" value="{{ $edit_paid_by_value ?? '' }}">
                                                     <label>{{ __('db.Paid By') }}</label>
                                                     <select name="paid_by_id_select[]"
                                                         class="form-control selectpicker">
                                                         @if (in_array('cash', $options))
-                                                            <option value="1">Cash</option>
+                                                            <option value="1" {{ $edit_paid_by_value == '1' ? 'selected' : '' }}>Cash</option>
                                                         @endif
                                                         @if (in_array('gift_card', $options))
-                                                            <option value="2">Gift Card</option>
+                                                            <option value="2" {{ $edit_paid_by_value == '2' ? 'selected' : '' }}>Gift Card</option>
                                                         @endif
                                                         @if (in_array('card', $options))
-                                                            <option value="3">Credit Card</option>
+                                                            <option value="3" {{ $edit_paid_by_value == '3' ? 'selected' : '' }}>Credit Card</option>
                                                         @endif
                                                         @if (in_array('cheque', $options))
-                                                            <option value="4">Cheque</option>
+                                                            <option value="4" {{ $edit_paid_by_value == '4' ? 'selected' : '' }}>Cheque</option>
                                                         @endif
                                                         @if (in_array('deposit', $options))
-                                                            <option value="6">Deposit</option>
+                                                            <option value="6" {{ $edit_paid_by_value == '6' ? 'selected' : '' }}>Deposit</option>
                                                         @endif
                                                         @if ($lims_reward_point_setting_data && $lims_reward_point_setting_data->is_active)
-                                                            <option value="7">Points</option>
+                                                            <option value="7" {{ $edit_paid_by_value == '7' ? 'selected' : '' }}>Points</option>
                                                         @endif
                                                         @if (in_array('razorpay', $options))
-                                                            <option value="razorpay">Razorpay</option>
+                                                            <option value="razorpay" {{ $edit_paid_by_value == 'razorpay' ? 'selected' : '' }}>Razorpay</option>
                                                         @endif
 
                                                         @foreach ($options as $option)
@@ -1490,7 +1506,7 @@
                                                                     $option !== 'deposit' &&
                                                                     $option !== 'paypal' &&
                                                                     $option !== 'pesapal')
-                                                                <option value="{{ $option }}">
+                                                                <option value="{{ $option }}" {{ ($edit_paid_by_value !== null && $edit_paid_by_value == $option) ? 'selected' : '' }}>
                                                                     {{ ucfirst($option) }}</option>
                                                             @endif
                                                         @endforeach
@@ -1500,11 +1516,68 @@
                                                     <label id="received-paying">{{ __('db.Cash Received') }} <x-info
                                                             title="Cash handed over to you. example: sale amount is 300. customer gives you 500. cash received: 500 "
                                                             type="info" /> *</label>
+                                                    @php
+                                                        $edit_paying_amount = (isset($pos_first_payment) && $pos_first_payment) ? (float)($pos_first_payment->amount ?? 0) + (float)($pos_first_payment->change ?? 0) : null;
+                                                    @endphp
                                                     <input type="text" name="paying_amount[]"
                                                         class="form-control paying_amount numkey" required
-                                                        step="any">
+                                                        step="any" value="{{ $edit_paying_amount !== null ? $edit_paying_amount : '' }}">
                                                 </div>
                                             </div>
+                                            @if (isset($pos_payments) && $pos_payments->count() > 1)
+                                                @foreach ($pos_payments->slice(1) as $pay)
+                                                    @php
+                                                        $pm = $pay->paying_method ?? '';
+                                                        $pay_by_val = $paying_method_to_id[$pm] ?? (strtolower($pm) === 'razorpay' ? 'razorpay' : (strtoupper($pm) === 'KNET' ? 'knet' : $pm));
+                                                        $pay_paying = (float)($pay->amount ?? 0) + (float)($pay->change ?? 0);
+                                                    @endphp
+                                            <div class="row new-row">
+                                                <div class="col-md-3 col-6 mt-2 paying-amount-container">
+                                                    <label>{{ __('db.Paying Amount') }} *</label>
+                                                    <input type="text" name="paid_amount[]" value="{{ $pay->amount ?? 0 }}" class="form-control paid_amount numkey" step="any">
+                                                </div>
+                                                <div class="col-md-3 col-6 mt-2">
+                                                    <input type="hidden" name="paid_by_id[]" value="{{ $pay_by_val }}">
+                                                    <label>{{ __('db.Paid By') }}</label>
+                                                    <select name="paid_by_id_select[]" class="form-control selectpicker">
+                                                        @if (in_array('cash', $options))
+                                                            <option value="1" {{ $pay_by_val == '1' ? 'selected' : '' }}>Cash</option>
+                                                        @endif
+                                                        @if (in_array('gift_card', $options))
+                                                            <option value="2" {{ $pay_by_val == '2' ? 'selected' : '' }}>Gift Card</option>
+                                                        @endif
+                                                        @if (in_array('card', $options))
+                                                            <option value="3" {{ $pay_by_val == '3' ? 'selected' : '' }}>Credit Card</option>
+                                                        @endif
+                                                        @if (in_array('cheque', $options))
+                                                            <option value="4" {{ $pay_by_val == '4' ? 'selected' : '' }}>Cheque</option>
+                                                        @endif
+                                                        @if (in_array('deposit', $options))
+                                                            <option value="6" {{ $pay_by_val == '6' ? 'selected' : '' }}>Deposit</option>
+                                                        @endif
+                                                        @if ($lims_reward_point_setting_data && $lims_reward_point_setting_data->is_active)
+                                                            <option value="7" {{ $pay_by_val == '7' ? 'selected' : '' }}>Points</option>
+                                                        @endif
+                                                        @if (in_array('razorpay', $options))
+                                                            <option value="razorpay" {{ $pay_by_val == 'razorpay' ? 'selected' : '' }}>Razorpay</option>
+                                                        @endif
+                                                        @foreach ($options as $option)
+                                                            @if ($option !== 'cash' && $option !== 'card' && $option !== 'cheque' && $option !== 'gift_card' && $option !== 'deposit' && $option !== 'paypal' && $option !== 'pesapal')
+                                                                <option value="{{ $option }}" {{ ($pay_by_val !== null && $pay_by_val == $option) ? 'selected' : '' }}>{{ ucfirst($option) }}</option>
+                                                            @endif
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3 col-5 mt-2 cash-received-container">
+                                                    <label>{{ __('db.Cash Received') }} <x-info title="Cash handed over to you. example: sale amount is 300. customer gives you 500. cash received: 500 " type="info" /> *</label>
+                                                    <input type="text" name="paying_amount[]" class="form-control paying_amount numkey" required step="any" value="{{ $pay_paying }}">
+                                                </div>
+                                                <div class="col-1 mt-2">
+                                                    <button type="button" class="btn btn-danger remove-row mt-4">X</button>
+                                                </div>
+                                            </div>
+                                                @endforeach
+                                            @endif
                                             <div class="row add-more-row mt-2">
                                                 <div class="col-md-12 text-center"><button
                                                         class="btn btn-info add-more">+
@@ -1514,11 +1587,11 @@
                                                 <div class="col-md-12 mt-1">
                                                     <label>{{ __('db.Payment Receiver') }}</label>
                                                     <input type="text" name="payment_receiver"
-                                                        class="form-control">
+                                                        class="form-control" value="{{ isset($pos_first_payment) && $pos_first_payment ? e($pos_first_payment->payment_receiver ?? '') : '' }}">
                                                 </div>
                                                 <div class="form-group col-md-12">
                                                     <label>{{ __('db.Payment Note') }}</label>
-                                                    <textarea id="payment_note" rows="2" class="form-control" name="payment_note"></textarea>
+                                                    <textarea id="payment_note" rows="2" class="form-control" name="payment_note">{{ isset($pos_first_payment) && $pos_first_payment ? e($pos_first_payment->payment_note ?? '') : '' }}</textarea>
                                                 </div>
                                             </div>
                                         </div>
@@ -3054,37 +3127,7 @@
                                 var batch_id = product.product_batch_id ? product
                                     .product_batch_id : '';
 
-                                if (product.is_imei == '1' || product.is_imei === 1 || product
-                                    .is_imei === true) {
-
-                                    // Check if IMEI already exists in the selected products
-                                    let imeiNumbersArray = [];
-                                    let exists = false;
-                                    $('.imei-number').each(function() {
-                                        let val = $(this).val();
-                                        imeiNumbersArray = val.split(",");
-                                        if (                        imeiNumbersArray.includes(productInput.imei)) {
-                                            exists = true;
-                                            return;
-                                        }
-                                    });
-
-                                    if ((exists == false) && product.imei_number.length > 0) {
-                                        productHtml = `
-                                        <div class="product-img" data-code="${product.code}"
-                                                                data-qty="${product.qty}"
-                                                                data-imei="${product.imei_number}"
-                                                                data-embedded="${product.is_embeded}"
-                                                                data-batch="${batch_id}"
-                                                                data-price="${product.price}"
-                                                                data-type="${product.type || 'product'}">
-                                            ${product.name} (${product.code}) | ${product.price} | IMEI: ${product.imei_number}
-                                        </div>
-                                    `;
-                                    } else {
-                                        $noResults.show();
-                                    }
-                                } else if (product.product_batch_id != null) {
+                               if (product.product_batch_id != null) {
                                     if (parseInt(product.qty) > 0) {
                                         if (product.expired_date == 0) {
                                             product.expired_date = "{{ __('db.expired') }}";
@@ -3261,6 +3304,12 @@
 
     <script>
         var isEditMode = {{ isset($lims_sale_data) ? 1 : 0 }};
+        window.posEditDebug = !!isEditMode;
+        @if (isset($draft_product_discount))
+            var editDraftDiscounts = @json($draft_product_discount['discount']);
+        @else
+            var editDraftDiscounts = null;
+        @endif
 
         $.ajaxSetup({
             headers: {
@@ -3417,7 +3466,22 @@
             });
 
             if (isEditMode) {
-                processDraftData();
+                @if (isset($pos_edit_product_rows) && !empty($pos_edit_product_rows))
+                    var posEditRows = @json($pos_edit_product_rows);
+                    loadEditPosRows(posEditRows);
+                @else
+                    processDraftData();
+                @endif
+                // Refresh order/delivery selectpickers so saved values show; show/hide receiver blocks by order type
+                $('#posdeliverytype, #order_mode, #posdeliverytime, #posdeliverytime2').selectpicker('refresh');
+                // Refresh payment method selectpickers (including multiple payment rows)
+                $('#payment-select-row .selectpicker').selectpicker('refresh');
+                if (typeof toggleReceiverBlocksByOrderType === 'function') {
+                    toggleReceiverBlocksByOrderType();
+                }
+                if (typeof calculatePayingAmount === 'function') {
+                    calculatePayingAmount();
+                }
             }
 
             saveDataToLocalStorageForCustomerDisplay('clear_no');
@@ -3961,6 +4025,232 @@
             @endif
         }
 
+        /**
+         * Edit POS only: add one product row from server data using pos_row_type (display/parent/child).
+         * Create flow uses addNewProduct; this is never used on create.
+         */
+        function addEditPosRow(data, rowMeta) {
+            rowMeta = rowMeta || {};
+            var posRowType = (rowMeta.pos_row_type || 'display').toLowerCase();
+            var isParentRow = (posRowType === 'parent');
+            var isChildRow = (posRowType === 'child');
+            var isCustomizeRow = isParentRow || isChildRow;
+
+            $('.payment-btn').removeAttr('disabled');
+            $('#installmentPlanBtn').removeAttr('disabled');
+
+            if (isParentRow) {
+                window.editParentCounter = (typeof window.editParentCounter === 'undefined' ? 0 : window.editParentCounter) + 1;
+            }
+            var displayName = data[0];
+            if (isParentRow) {
+                displayName = data[0] + ' ' + window.editParentCounter;
+            }
+
+            var maxStock = parseFloat(data[19]);
+            if (!isNaN(maxStock) && maxStock >= 0 && (!data[18] || data[18] == 'null' || data[18] == '' || data[18] == 0)) {
+                var requestedQty = parseFloat(data[15]) || 1;
+                if (requestedQty > maxStock) data[15] = maxStock;
+            }
+
+            var rowId = String(data[1]).replace(/[^a-zA-Z0-9_-]/g, '_') + '_e_' + (rowMeta.custom_sort != null ? rowMeta.custom_sort : Date.now());
+            var rowClass = isCustomizeRow ? (isParentRow ? 'pos-row-customize pos-row-customize-parent' : 'pos-row-customize-child') : 'pos-row-display';
+            var newRow = $('<tr id="' + rowId + '" class="' + rowClass + '">');
+            var cols = '';
+            temp_unit_name = (data[6]).split(',');
+
+            if (isCustomizeRow) {
+                $('.customize-parent-col').show();
+                if (isParentRow) {
+                    var shouldCheck = !(window.firstDraftParentChecked);
+                    if (shouldCheck) window.firstDraftParentChecked = true;
+                    $('.customize-parent-radio').prop('checked', false);
+                    var radioId = 'custom_parent_' + window.editParentCounter;
+                    cols += '<td class="align-middle text-center customize-parent-td"><label class="d-flex align-items-center justify-content-center mb-0" for="' + radioId + '"><input type="radio" class="customize-parent-radio" name="customize_parent_row" value="' + radioId + '" id="' + radioId + '"' + (shouldCheck ? ' checked' : '') + ' /></label></td>';
+                } else {
+                    cols += '<td class="align-middle text-center customize-parent-td">&mdash;</td>';
+                }
+            }
+
+            var stockDisplay = '';
+            if (data[20] && (data[20].trim() == 'standard' || data[20].trim() == 'combo' || data[20].trim() == 'raw_material' || data[20].trim() == 'warehouse_store')) {
+                if (!data[18] || data[18] == 'null' || data[18] == '0' || data[18] == 0 || data[18] === '') {
+                    stockDisplay = ' | {{ __('db.In Stock') }} : <span class="in-stock">' + data[19] + '</span>';
+                }
+            }
+            var productTitleTdStyle = isCustomizeRow ? '' : ' style="max-width: 39.333%;"';
+            if (all_permission.includes("cart-product-update")) {
+                cols += '<td class="col-sm-4 col-6 product-title"' + productTitleTdStyle + '><strong class="edit-product btn btn-link" data-toggle="modal" data-target="#editModal">' + displayName + ' <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></strong><br><span>' + data[1] + '</span>' + stockDisplay + ' <strong class="product-price d-none"></strong>';
+            } else {
+                cols += '<td class="col-sm-4 col-6 product-title"' + productTitleTdStyle + '><strong>' + displayName + '<br><span>' + data[1] + '</span>' + stockDisplay + ' <strong class="product-price d-none"></strong>';
+            }
+            
+            cols += '</td>';
+            cols += '<td class="col-sm-2 product-price d-none d-md-block"></td>';
+            cols += '<td class="col-sm-3" style="min-width:140px"><div class="input-group flex-nowrap">';
+            if (!data[18] || data[18] == 'null' || data[18] == '0' || data[18] == 0 || data[18] === '' || (data[20] && (data[20].trim() == 'raw_material' || data[20].trim() == 'warehouse_store'))) {
+                cols += '<div class="input-group-prepend"><button type="button" class="btn btn-outline-secondary minus" style="padding:5px 10px"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" /></svg></button></div>';
+            }
+            cols += '<input type="text" name="qty[]" class="form-control qty numkey input-number text-center" step="any" value="' + data[15] + '" max="' + data[19] + '" required style="min-width:50px">';
+            if (!data[18] || data[18] == 'null' || data[18] == '0' || data[18] == 0 || data[18] === '' || (data[20] && (data[20].trim() == 'raw_material' || data[20].trim() == 'warehouse_store'))) {
+                cols += '<div class="input-group-append"><button type="button" class="btn btn-outline-secondary plus" style="padding:5px 10px"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></button></div>';
+            }
+            cols += '</div></td>';
+            cols += '<td class="col-sm-2 sub-total-cell"><span class="sub-total"></span> <button type="button" class="ibtnDel btn btn-danger btn-sm" title="' + {!! json_encode(__('db.Remove')) !!} + '"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg></button></td>';
+            cols += '<input type="hidden" class="product-code" name="product_code[]" value="' + data[1] + '"/>';
+            cols += '<input type="hidden" class="product-id" name="product_id[]" value="' + data[9] + '"/>';
+            cols += '<input type="hidden" class="product_type" name="product_type[]" value="' + data[20] + '"/>';
+            cols += '<input type="hidden" class="product_price" />';
+            cols += '<input type="hidden" class="sale-unit" name="sale_unit[]" value="' + temp_unit_name[0] + '"/>';
+            cols += '<input type="hidden" class="net_unit_price" name="net_unit_price[]" />';
+            cols += '<input type="hidden" class="discount-value" name="discount[]" />';
+            cols += '<input type="hidden" class="tax-rate" name="tax_rate[]" value="' + data[3] + '"/>';
+            cols += '<input type="hidden" class="tax-value" name="tax[]" />';
+            cols += '<input type="hidden" class="tax-name" value="' + data[4] + '" />';
+            cols += '<input type="hidden" class="tax-method" value="' + data[5] + '" />';
+            cols += '<input type="hidden" class="sale-unit-operator" value="' + data[7] + '" />';
+            cols += '<input type="hidden" class="sale-unit-operation-value" value="' + data[8] + '" />';
+            cols += '<input type="hidden" class="subtotal-value" name="subtotal[]" />';
+            var custId = (rowMeta.customize_type_id != null && rowMeta.customize_type_id !== '') ? rowMeta.customize_type_id : '';
+            var custSort = (rowMeta.custom_sort !== undefined && rowMeta.custom_sort !== null) ? rowMeta.custom_sort : '';
+            cols += '<input type="hidden" class="customize-type-id" name="customize_type_id[]" value="' + custId + '"/>';
+            cols += '<input type="hidden" class="custom-sort" name="custom_sort[]" value="' + custSort + '"/>';
+            var isParentVal = isParentRow ? '1' : '0';
+            cols += '<input type="hidden" class="is-customize-parent" name="is_customize_parent[]" value="' + isParentVal + '"/>';
+            if (data[23]) {
+                cols += '<input type="hidden" class="topping_product" name="topping_product[]" value="" />';
+                cols += '<input type="hidden" class="topping-price" name="topping-price" value="" />';
+            }
+            newRow.append(cols);
+
+            var $tbody = $("table.order-list tbody");
+            var $rows = $tbody.find('tr');
+            var $selectedParent = $rows.has('.customize-parent-radio:checked');
+            if (isChildRow && $selectedParent.length) {
+                var idx = $rows.index($selectedParent.first());
+                var lastInGroup = idx;
+                for (var r = idx + 1; r < $rows.length; r++) {
+                    if ($rows.eq(r).find('.customize-parent-radio').length) break;
+                    lastInGroup = r;
+                }
+                $rows.eq(lastInGroup).after(newRow);
+            } else if (isParentRow) {
+                $tbody.append(newRow);
+            } else {
+                var $firstCustomize = $rows.filter('.pos-row-customize, .pos-row-customize-parent, .pos-row-customize-child').first();
+                if ($firstCustomize.length) $firstCustomize.before(newRow);
+                else $tbody.prepend(newRow);
+            }
+
+            if (keyboard_active == 1) {
+                newRow.find('.qty').keyboard({
+                    usePreview: false,
+                    layout: 'custom',
+                    display: { 'accept': '&#10004;', 'cancel': '&#10006;' },
+                    customLayout: { 'normal': ['1 2 3', '4 5 6', '7 8 9', '0 {dec} {bksp}', '{clear} {cancel} {accept}'] },
+                    restrictInput: true,
+                    preventPaste: true,
+                    autoAccept: true,
+                    css: { container: 'center-block dropdown-menu', buttonDefault: 'btn btn-default', buttonHover: 'btn-primary', buttonAction: 'active', buttonDisabled: 'disabled' },
+                });
+            }
+
+            rowindex = newRow.index();
+            product_price.splice(rowindex, 0, parseFloat(data[2] * currency['exchange_rate']) + parseFloat(data[2] * currency['exchange_rate'] * customer_group_rate));
+            if (data[16]) {
+                wholesale_price.splice(rowindex, 0, parseFloat(data[16] * currency['exchange_rate']) + parseFloat(data[16] * currency['exchange_rate'] * customer_group_rate));
+            } else {
+                wholesale_price.splice(rowindex, 0, '{{ number_format(0, $general_setting->decimal, '.', '') }}');
+            }
+            cost.splice(rowindex, 0, parseFloat(data[17] * currency['exchange_rate']));
+            product_discount.splice(rowindex, 0, '{{ number_format(0, $general_setting->decimal, '.', '') }}');
+            tax_rate.splice(rowindex, 0, parseFloat(data[3]));
+            tax_name.splice(rowindex, 0, data[4]);
+            tax_method.splice(rowindex, 0, data[5]);
+            unit_name.splice(rowindex, 0, data[6]);
+            unit_operator.splice(rowindex, 0, data[7]);
+            unit_operation_value.splice(rowindex, 0, data[8]);
+            is_imei.splice(rowindex, 0, data[13]);
+            is_variant.splice(rowindex, 0, data[14]);
+            $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.product_price').val(product_price[rowindex]);
+            checkQuantity(data[15], true);
+            checkDiscount(data[15], true);
+            if (data[16]) {
+                populatePriceOption();
+                $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.edit-product').click();
+            }
+            if (data[23] && Array.isArray(data[23]) && data[23].length > 0 && productSale && productSale.length > 0) {
+                if (product_discount[rowindex] < 1 && typeof editDraftDiscounts !== 'undefined' && editDraftDiscounts) {
+                    var key = data[9];
+                    if (typeof key === 'string' && String(key).indexOf('ws_') !== 0) key = parseInt(key, 10);
+                    if (editDraftDiscounts[key] != null) product_discount[rowindex] = parseFloat(editDraftDiscounts[key]) || 0;
+                }
+                var matchedIndex = productSale.findIndex(function(p) { return parseInt(p.product_id) === parseInt(data[9]); });
+                if (matchedIndex !== -1) {
+                    var matchedProduct = productSale[matchedIndex];
+                    var toppings = JSON.parse(matchedProduct.topping_id || '[]');
+                    var toppingNames = toppings.map(function(t) { return t.name; }).join(', ');
+                    var totalToppingPrice = toppings.reduce(function(sum, t) { return sum + parseFloat(t.price); }, 0);
+                    newRow.find('.product-title').append('<br><small>Includes: ' + toppingNames + '</small>');
+                    newRow.find('.topping_product').val(matchedProduct.topping_id);
+                    newRow.find('.topping-price').val(totalToppingPrice.toFixed({{ $general_setting->decimal }}));
+                    var currentPrice = parseFloat(newRow.find('.product-price').text()) || 0;
+                    var newPrice = currentPrice + totalToppingPrice - product_discount[rowindex];
+                    newRow.find('.product-price').text(newPrice.toFixed({{ $general_setting->decimal }}));
+                    newRow.find('.sub-total').text(newPrice.toFixed({{ $general_setting->decimal }}));
+                    productSale.splice(matchedIndex, 1);
+                }
+            }
+        }
+
+        /**
+         * Edit POS: load product rows from server-built data (same format as create).
+         * Uses pos_row_type + pos_sort_order; calls addEditPosRow only (create uses addNewProduct).
+         */
+        function loadEditPosRows(rows) {
+            if (!rows || !rows.length) return;
+            if (window.posEditDebug) {
+                console.log('[POS Edit Debug] Rows from server:', rows.length);
+                rows.forEach(function(r, idx) {
+                    console.log('[POS Edit Debug] Row ' + (idx + 1) + ':', {
+                        name: (r.data && r.data[0]) || '-',
+                        code: (r.data && r.data[1]) || '-',
+                        pos_row_type: r.pos_row_type,
+                        is_customize_parent: r.is_customize_parent,
+                        customize_type_id: r.customize_type_id,
+                        custom_sort: r.custom_sort
+                    });
+                });
+            }
+            window.firstDraftParentChecked = false;
+            window.editParentCounter = 0;
+            var maxSort = 0;
+            for (var i = 0; i < rows.length; i++) {
+                var r = rows[i];
+                if (r.custom_sort != null && r.custom_sort > maxSort) maxSort = parseInt(r.custom_sort, 10);
+            }
+            if (maxSort > 0) customSortCounter = maxSort;
+            for (var i = 0; i < rows.length; i++) {
+                var r = rows[i];
+                addEditPosRow(r.data, {
+                    pos_row_type: r.pos_row_type,
+                    customize_type_id: r.customize_type_id,
+                    custom_sort: r.custom_sort,
+                    is_customize_parent: r.is_customize_parent
+                });
+                if (editDraftDiscounts && r.data && r.data[9] != null) {
+                    var key = r.data[9];
+                    if (typeof key === 'string' && String(key).indexOf('ws_') !== 0) key = parseInt(key, 10);
+                    if (editDraftDiscounts[key] != null) {
+                        product_discount[rowindex] = parseFloat(editDraftDiscounts[key]) || 0;
+                        checkDiscount(r.data[15], true);
+                    }
+                }
+            }
+            calculateTotal();
+            if (window.posEditDebug) console.log('[POS Edit Debug] Loaded', rows.length, 'rows. Table rows:', $('table.order-list tbody tr').length);
+        }
+
         function productSearch(productInput) {
             // --- FLOW: type decides merge vs new row ---
             // DISPLAY (order_type 1): Product already in cart as DISPLAY? → qty plus on that row. Else → new display row.
@@ -3997,17 +4287,7 @@
                     if ($row.hasClass('pos-row-display')) return;
                     if (selectedParentRowIndices.length > 0 && selectedParentRowIndices.indexOf(i) === -1) return;
                 }
-                rowindex = i;
-                if (productInput.imei != 'null' && productInput.imei != '') {
-                    var imeiNumbers = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ') .imei-number').val();
-                    var imeiNumbersArray = imeiNumbers ? imeiNumbers.split(",") : [];
-                    if (imeiNumbersArray.includes(productInput.imei)) {
-                        alert('Same imei or serial number is not allowed!');
-                        flag = false;
-                        $('#product-search-input').val('');
-                        return false;
-                    }
-                }
+                rowindex = i;                
                 pre_qty = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ') .qty').val();
                 return false;
             });
@@ -4075,15 +4355,6 @@
                             }
                             var isParentRow = (draftCustomize && draftCustomize.is_customize_parent == 1) ? true : false;
                             addNewProduct(data, draftCustomize, isParentRow);
-                        } else if (data[18] != 'null' && data[18] != '') {
-                            var imeiNumbers = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')')
-                                .find('.imei-number').val();
-                            if (imeiNumbers)
-                                imeiNumbers += ',' + data[18];
-                            else
-                                imeiNumbers = data[18];
-                            $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find(
-                                '.imei-number').val(imeiNumbers);
                         }
                     }
                 });
@@ -4147,7 +4418,7 @@
                 }
             }
 
-            var productTitleTdStyle = orderType2 ? '' : ' style="max-width: 345px;"';
+            var productTitleTdStyle = orderType2 ? '' : ' style="max-width: 39.333%;"';
             if (all_permission.includes("cart-product-update")) {
                 cols +=
                     '<td class="col-sm-4 col-6 product-title"' + productTitleTdStyle + '><strong class="edit-product btn btn-link" data-toggle="modal" data-target="#editModal">' +
@@ -4213,7 +4484,20 @@
             if (draftCustomize && (draftCustomize.customize_type_id || draftCustomize.custom_sort !== undefined)) {
                 custId = (draftCustomize.customize_type_id || '');
                 custSort = (draftCustomize.custom_sort !== undefined && draftCustomize.custom_sort !== null) ? draftCustomize.custom_sort : '';
-            } else if (orderTypeVal == '2' && customizeTypeVal) {
+            } else if (orderType2 && !isParentRow) {
+                var $selParent = $("table.order-list tbody tr").has('.customize-parent-radio:checked');
+                if ($selParent.length) {
+                    custId = $selParent.first().find('.customize-type-id').val() || '';
+                    var maxSort = 0;
+                    $selParent.first().nextAll().each(function() {
+                        if ($(this).find('.customize-parent-radio').length) return false;
+                        var s = parseInt($(this).find('.custom-sort').val(), 10);
+                        if (!isNaN(s) && s > maxSort) maxSort = s;
+                    });
+                    custSort = maxSort + 1;
+                }
+            }
+            if (custId === '' && custSort === '' && orderTypeVal == '2' && customizeTypeVal) {
                 customSortCounter = (typeof customSortCounter === 'undefined' ? 0 : customSortCounter) + 1;
                 custId = customizeTypeVal;
                 custSort = customSortCounter;
@@ -4222,10 +4506,6 @@
             cols += '<input type="hidden" class="custom-sort" name="custom_sort[]" value="' + custSort + '"/>';
             var isParentVal = (orderType2 && isParentRow) ? '1' : '0';
             cols += '<input type="hidden" class="is-customize-parent" name="is_customize_parent[]" value="' + isParentVal + '"/>';
-            if (data[18] != 'null' && data[18] != '')
-                cols += '<input type="hidden" class="imei-number" name="imei_number[]" value="' + data[18] + '" />';
-            else
-                cols += '<input type="hidden" class="imei-number" name="imei_number[]" value="" />';
             if (data[23]) {
                 cols += '<input type="hidden" class="topping_product" name="topping_product[]" value="" />';
                 cols += '<input type="hidden" class="topping-price" name="topping-price" value="" />';
@@ -4306,11 +4586,7 @@
             if (data[16]) {
                 populatePriceOption();
                 $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.edit-product').click();
-            }
-
-            // if(data[18]) {
-            //     $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.imei-number').val(imeiNumbers);
-            // }
+            }           
 
             if (data[23] && Array.isArray(data[23]) && data[23].length > 0) {
                 if (productSale && productSale.length > 0) {
@@ -5619,7 +5895,6 @@
                 unit_operator.splice(idx, 1);
                 unit_operation_value.splice(idx, 1);
                 if (typeof cost !== 'undefined') cost.splice(idx, 1);
-                if (typeof is_imei !== 'undefined') is_imei.splice(idx, 1);
                 if (typeof is_variant !== 'undefined') is_variant.splice(idx, 1);
                 $rows.eq(idx).remove();
             }
@@ -5640,19 +5915,7 @@
         });
 
         //Update product
-        $('button[name="update_btn"]').on("click", function() {
-            if (is_imei[rowindex]) {
-                var imeiNumbers = '';
-                $("#editModal .imei-numbers").each(function(i) {
-                    if (i)
-                        imeiNumbers += ',' + $(this).val();
-                    else
-                        imeiNumbers = $(this).val();
-                });
-                $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.imei-number').val(
-                    imeiNumbers);
-            }
-
+        $('button[name="update_btn"]').on("click", function() {            
             var edit_discount = $('input[name="edit_discount"]').val();
             var edit_qty = $('input[name="edit_qty"]').val();
             var edit_unit_price = $('input[name="edit_unit_price"]').val();
@@ -6571,128 +6834,7 @@
                     '</option>');
             }
             $('.selectpicker').selectpicker('refresh');
-        }
-
-        function edit() {
-            $(".imei-section").remove();
-            if (is_imei[rowindex]) {
-
-                var imeiNumbers = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.imei-number')
-                    .val();
-
-                if (imeiNumbers.length) {
-                    imeiArrays = [...new Set(imeiNumbers.split(","))];
-                    htmlText = `<div class="col-md-8 form-group imei-section">
-                            <label>IMEI or Serial Numbers</label>
-                            <div class="table-responsive">
-                                <table id="imei-table" class="table table-hover">
-                                    <tbody>`;
-                    for (var i = 0; i < imeiArrays.length; i++) {
-                        htmlText +=
-                            `<tr>
-                                    <td>
-                                        <input type="text" class="form-control imei-numbers" name="imei_numbers[]" value="` +
-                            imeiArrays[i] + `" />
-                                    </td>
-                                    <td>
-                                        <button type="button" class="imei-del btn btn-sm btn-danger">X</button>
-                                    </td>
-                                </tr>`;
-                    }
-                    htmlText += `</tbody>
-                                </table>
-                            </div>
-                        </div>`;
-                    $("#editModal .modal-element").append(htmlText);
-                }
-            }
-            populatePriceOption();
-            // $("#product-cost").text(cost[rowindex]);
-            var row_product_name_code = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find(
-                'td:nth-child(1) > strong:nth-child(1)').text();
-            $('#modal_header').text(row_product_name_code);
-
-            var qty = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.qty').val();
-            $('input[name="edit_qty"]').val(qty);
-
-            cur_product_id = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ') .product-id').val();
-            // @if (isset($draft_product_discount))
-            //     if (product_discount[rowindex] < 1) {
-            //         draft_discounts = @json($draft_product_discount['discount']);
-            //         product_discount[rowindex] = draft_discounts[cur_product_id];
-            //     }
-            // @endif
-
-            $('input[name="edit_discount"]').val(parseFloat(product_discount[rowindex]).toFixed(
-                {{ $general_setting->decimal }}));
-
-            var tax_name_all = <?php echo json_encode($tax_name_all); ?>;
-            pos = tax_name_all.indexOf(tax_name[rowindex]);
-            $('select[name="edit_tax_rate"]').val(pos);
-
-            var row_product_code = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.product-code')
-                .val();
-            var product_type = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.product_type').val();
-            if (product_type == 'standard') {
-                unitConversion();
-                temp_unit_name = (unit_name[rowindex]).split(',');
-                temp_unit_name.pop();
-                temp_unit_operator = (unit_operator[rowindex]).split(',');
-                temp_unit_operator.pop();
-                temp_unit_operation_value = (unit_operation_value[rowindex]).split(',');
-                temp_unit_operation_value.pop();
-
-                $('select[name="edit_unit"]').empty();
-                $.each(temp_unit_name, function(key, value) {
-                    $('select[name="edit_unit"]').append('<option data-operator="' + temp_unit_operator[key] +
-                        '" data-operation-value="' + temp_unit_operation_value[key] + '" value="' + key + '">' +
-                        value + '</option>');
-                });
-                $("#edit_unit").show();
-            } else {
-                row_product_price = product_price[rowindex];
-                $("#edit_unit").hide();
-            }
-            $('input[name="edit_unit_price"]').val(row_product_price.toFixed({{ $general_setting->decimal }}));
-            $('.selectpicker').selectpicker('refresh');
-        }
-
-        //Delete imei
-        $(document).on("click", "table#imei-table tbody .imei-del", function() {
-            // Decrease qty
-            var edit_qty = parseFloat($('input[name="edit_qty"]').val());
-            edit_qty = (edit_qty - 1);
-            $('input[name="edit_qty"]').val(edit_qty);
-
-            // Check number of remaining IMEI for the same product
-            let imeis = $('#tbody-id tr:nth-child(' + (rowindex + 1) + ')').find('.imei-number').val();
-
-            let target = $(this).closest("tr").find('.imei-numbers').val();
-
-            // Remove the row
-            $(this).closest("tr").remove();
-
-            // 1. Convert to array (remove spaces just in case)
-            let arr = imeis.split(',').map(s => s.trim());
-
-            // 2. Filter out the target IMEI
-            arr = arr.filter(i => i !== target);
-
-            // 3. Convert back to string
-            let updated = arr.join(',');
-
-            // Set the updated value back
-            $('#tbody-id tr:nth-child(' + (rowindex + 1) + ')').find('.imei-number').val(updated);
-
-            if (edit_qty == 0) {
-                $('#editModal').modal('hide');
-                $('#tbody-id tr:eq(' + rowindex + ')').remove();
-            }
-
-            $('#tbody-id tr:nth-child(' + (rowindex + 1) + ')').find('.qty').val(edit_qty);
-            checkDiscount(edit_qty, false);
-            calculateTotal();
-        });
+        }        
 
         function couponDiscount() {
             var rownumber = $('table.order-list tbody tr:last').index();
@@ -6806,7 +6948,6 @@
                 .val();
             var qty = parseFloat($('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.qty').attr('max'));
             var product_type = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.product_type').val();
-            var imeiNumbers = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.imei-number').val();
             if (without_stock == 'no') {
                 if (product_type.trim() == 'standard' || product_type.trim() == 'combo') {
                     var operator = unit_operator[rowindex].split(',');
@@ -6816,20 +6957,16 @@
                     else if (operator[0] == '/')
                         total_qty = sale_qty / operation_value[0];
                     if (total_qty > qty) {
-                        if (imeiNumbers.length) {
-                            // console.log(sale_qty);
-                            // sale_qty = (sale_qty + 1);
-                        } else {
-                            alert('Quantity exceeds stock quantity!');
+                       
+                        alert('Quantity exceeds stock quantity!');
 
-                            if (flag) {
-                                sale_qty = (sale_qty - 1);
-                                checkQuantity(sale_qty, true);
-                            } else {
-                                edit();
-                                return;
-                            }
-                        }
+                        if (flag) {
+                            sale_qty = (sale_qty - 1);
+                            checkQuantity(sale_qty, true);
+                        } else {
+                            edit();
+                            return;
+                        }                        
 
                         if (sale_qty == 0) {
                             $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').remove();
@@ -7088,6 +7225,18 @@
                                 type: $('.payment-form').attr('method'), // The form's method (GET or POST)
                                 data: $('.payment-form').serialize(), // Serialize the form data
                                 success: function(response) {
+                                    // Server may return: sale id (number), or { id: N }, or { redirect: url }. Avoid using HTML as id.
+                                    var saleId = null;
+                                    if (typeof response === 'object' && response !== null) {
+                                        saleId = response.id != null ? response.id : null;
+                                        if (saleId == null && response.redirect) {
+                                            location.replace(response.redirect);
+                                            return;
+                                        }
+                                    } else if (typeof response === 'number' || (typeof response === 'string' && /^\d+$/.test(String(response).trim()))) {
+                                        saleId = typeof response === 'number' ? response : parseInt(response, 10);
+                                    }
+                                    var hasValidId = saleId != null && !isNaN(saleId) && saleId > 0;
 
                                     @if (in_array('restaurant', explode(',', $general_setting->modules)))
                                         if ($('input[name="sale_status"]').val() == 1 || $(
@@ -7101,11 +7250,11 @@
 
                                             let whatsappChecked = $('#send_whatsapp').is(':checked');
                                             let printChecked = $('#print_invoice').is(':checked');
-                                            if (whatsappChecked) {
+                                            if (whatsappChecked && hasValidId) {
                                                 let customer_id = $('select[name="customer_id"]').val();
                                                 let customer = lims_customer_list.find(c => c.id == customer_id);
                                                 let whatsapp_number = customer?.wa_number?.replace(/\D/g, '') || '';
-                                                let link = "{{ url('sales/gen_invoice') }}/" + response;
+                                                let link = "{{ url('sales/gen_invoice') }}/" + saleId;
                                                 console.log('1');
                                                 console.log(whatsapp_number);
                                                 if (whatsapp_number != '') {
@@ -7115,35 +7264,40 @@
 
                                             }
                                             if (printChecked) {
-                                                let link = "{{ url('sales/gen_invoice') }}/" + response +
-                                                    "?is_print=true";
-                                                $.ajax({
-                                                    url: link,
-                                                    type: 'GET',
-                                                    success: function(data) {
-                                                        if (data.trim() === 'receipt_printer') {
-                                                            alert(
-                                                                "{{ __('db.The receipt has been successfully printed') }}"
-                                                            );
-                                                        } else if (data.trim() ===
-                                                            'invoice_settings_error') {
-                                                            alert(
-                                                                "{{ __('db.Please select either the 58mm or 80mm template as the default in Invoice Settings') }}"
-                                                            );
-                                                        } else {
-                                                            $('#pos-layout').css('display', 'none');
-                                                            $('head').html('');
-                                                            $('#print-layout').html(data);
+                                                if (!hasValidId) {
+                                                    console.warn('POS submit: no sale id in response, skipping print. Redirecting to POS.');
+                                                    location.replace('{{ url('/pos') }}');
+                                                } else {
+                                                    let link = "{{ url('sales/gen_invoice') }}/" + saleId +
+                                                        "?is_print=true";
+                                                    $.ajax({
+                                                        url: link,
+                                                        type: 'GET',
+                                                        success: function(data) {
+                                                            if (data.trim() === 'receipt_printer') {
+                                                                alert(
+                                                                    "{{ __('db.The receipt has been successfully printed') }}"
+                                                                );
+                                                            } else if (data.trim() ===
+                                                                'invoice_settings_error') {
+                                                                alert(
+                                                                    "{{ __('db.Please select either the 58mm or 80mm template as the default in Invoice Settings') }}"
+                                                                );
+                                                            } else {
+                                                                $('#pos-layout').css('display', 'none');
+                                                                $('head').html('');
+                                                                $('#print-layout').html(data);
 
-                                                            setTimeout(function() {
-                                                                window.print();
-                                                            }, 50);
+                                                                setTimeout(function() {
+                                                                    window.print();
+                                                                }, 50);
+                                                            }
+                                                        },
+                                                        error: function(xhr, status, error) {
+                                                            console.error("Error loading invoice:", error);
                                                         }
-                                                    },
-                                                    error: function(xhr, status, error) {
-                                                        console.error("Error loading invoice:", error);
-                                                    }
-                                                });
+                                                    });
+                                                }
                                             }
                                             if (!whatsappChecked && !printChecked) {
                                                 location.replace('{{ url('/pos') }}');
@@ -7183,6 +7337,10 @@
                                                 });
                                             }
                                         } else if ($('input[name="sale_status"]').val() == 3) {
+                                            if (hasValidId) {
+                                                location.replace('{{ url('/pos') }}/' + saleId);
+                                                return;
+                                            }
                                             $('#pos-layout').prepend(
                                                 '<div class="alert alert-success alert-dismissible text-center"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>{{ __('db.Sale successfully added to draft') }}</div>'
                                             );
@@ -7191,7 +7349,6 @@
                                             $.get('{{ url('sales/recent-draft') }}', function(data) {
                                                 populateRecentDraft(data);
                                             });
-                                            // Fetch next invoice number so next sale gets unique reference_no
                                             $.get('{{ route('sale.nextPosInvoiceNo') }}', function(res) {
                                                 if (res.success && res.data) {
                                                     $('#pos-invoice-no-display').val(res.data.display_number);

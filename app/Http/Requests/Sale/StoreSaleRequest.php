@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Sale;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreSaleRequest extends FormRequest
 {
@@ -18,8 +19,20 @@ class StoreSaleRequest extends FormRequest
     {
         $paymentStatusRule = $this->input('pos') ? 'nullable' : 'required';
 
+        // POS edit: when draft=1 we keep same reference_no, so ignore current sale_id
+        $saleIdRaw = $this->input('sale_id');
+        if (is_array($saleIdRaw)) {
+            $saleIdRaw = $saleIdRaw[0] ?? null;
+        }
+        $saleId = (is_numeric($saleIdRaw) && (int) $saleIdRaw > 0) ? (int) $saleIdRaw : null;
+
+        $referenceNoRule = ['nullable', 'string', 'max:191'];
+        $referenceNoRule[] = $saleId !== null
+            ? Rule::unique('sales', 'reference_no')->ignore($saleId, 'id')
+            : 'unique:sales,reference_no';
+
         return [
-            'reference_no'   => 'nullable|string|max:191|unique:sales,reference_no',
+            'reference_no'   => $referenceNoRule,
             'customer_id'    => 'required|exists:customers,id',
             'warehouse_id'   => 'required|exists:warehouses,id',
             'currency_id'    => 'required',

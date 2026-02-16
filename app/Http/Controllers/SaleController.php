@@ -62,6 +62,7 @@ use Srmklive\PayPal\Services\ExpressCheckout;
 use Srmklive\PayPal\Services\AdaptivePayments;
 use GeniusTS\HijriDate\Date;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use App\Models\Currency;
 use App\Models\InvoiceSchema;
 use App\Models\InvoiceSetting;
@@ -735,16 +736,16 @@ class SaleController extends Controller
 
     public function store(StoreSaleRequest $request)
     {
-
+// dd($request->all());
         $data = $request->all();
         /*try {*/
         if (isset($request->reference_no)) {
+            $refRules = ['max:191', 'required'];
+            $refRules[] = !empty($request->sale_id)
+                ? Rule::unique('sales', 'reference_no')->ignore($request->sale_id)
+                : 'unique:sales,reference_no';
             $this->validate($request, [
-                'reference_no' => [
-                    'max:191',
-                    'required',
-                    'unique:sales'
-                ],
+                'reference_no' => $refRules,
             ]);
         }
 
@@ -801,13 +802,12 @@ class SaleController extends Controller
             else
                 $data['payment_status'] = 4;
 
-            if ($data['draft']) {
+            if (!empty($data['draft'])) {
                 $lims_sale_data = Sale::find($data['sale_id']);
-                $lims_product_sale_data = Product_Sale::where('sale_id', $data['sale_id'])->get();
-                foreach ($lims_product_sale_data as $product_sale_data) {
-                    $product_sale_data->delete();
+                if ($lims_sale_data) {
+                    Product_Sale::where('sale_id', $data['sale_id'])->delete();
+                    $lims_sale_data->delete();
                 }
-                $lims_sale_data->delete();
             }
         } else {
             if (!isset($data['reference_no']))
@@ -949,9 +949,9 @@ class SaleController extends Controller
         $mail_data['grand_total'] = $lims_sale_data->grand_total;
         $mail_data['paid_amount'] = $lims_sale_data->paid_amount;
 
-        $product_id = $data['product_id'];
-        $product_batch_id = $data['product_batch_id'];
-        $imei_number = $data['imei_number'];
+        $product_id = isset($data['product_id']) && is_array($data['product_id']) ? $data['product_id'] : [];
+        $product_batch_id = $data['product_batch_id'] ?? [];
+        $imei_number = $data['imei_number'] ?? [];
         $product_code = $data['product_code'];
         $qty = $data['qty'];
         $sale_unit = $data['sale_unit'];
@@ -974,6 +974,13 @@ class SaleController extends Controller
         $log_data['item_description'] = '';
 
         foreach ($product_id as $i => $id) {
+            // Child row must be a product inside the box, not the box (ws_) itself
+            $is_child_row = !(isset($is_customize_parent[$i]) && (int) $is_customize_parent[$i] === 1)
+                && (isset($customize_type_id[$i]) && $customize_type_id[$i] !== '' && $customize_type_id[$i] !== null);
+            if ($is_child_row && is_string($id) && str_starts_with($id, 'ws_')) {
+                \Log::warning('POS store: child row has box id (ws_), skipping. Row index=' . $i);
+                continue;
+            }
             // POS customize: warehouse-store (basement) product from /warehouse-stores/create
             if (is_string($id) && str_starts_with($id, 'ws_')) {
                 $basement_id = (int) substr($id, 3);
@@ -988,6 +995,9 @@ class SaleController extends Controller
                         $sale_unit_id = $lims_sale_unit_data->id;
                     }
                 }
+                $is_parent_row = isset($is_customize_parent[$i]) && (int) $is_customize_parent[$i] === 1;
+                $has_customize_type = isset($customize_type_id[$i]) && $customize_type_id[$i] !== '' && $customize_type_id[$i] !== null;
+                $pos_row_type = $is_parent_row ? 'parent' : ($has_customize_type ? 'child' : 'display');
                 $product_sale = [
                     'sale_id' => $lims_sale_data->id,
                     'product_id' => null,
@@ -1001,12 +1011,14 @@ class SaleController extends Controller
                     'tax_rate' => $tax_rate[$i],
                     'tax' => $tax[$i],
                     'total' => $total[$i],
-                    'customize_type_id' => (isset($customize_type_id[$i]) && $customize_type_id[$i] !== '' && $customize_type_id[$i] !== null) ? $customize_type_id[$i] : null,
+                    'customize_type_id' => $has_customize_type ? $customize_type_id[$i] : null,
                     'custom_sort' => (isset($custom_sort[$i]) && $custom_sort[$i] !== '' && $custom_sort[$i] !== null) ? (int) $custom_sort[$i] : null,
-                    'custom_parent_id' => isset($is_customize_parent[$i]) && (int) $is_customize_parent[$i] === 1 ? null : $current_custom_parent_id,
+                    'custom_parent_id' => $is_parent_row ? null : $current_custom_parent_id,
+                    'pos_row_type' => $pos_row_type,
+                    'pos_sort_order' => $i + 1,
                 ];
                 $created = Product_Sale::create($product_sale);
-                if (isset($is_customize_parent[$i]) && (int) $is_customize_parent[$i] === 1) {
+                if ($is_parent_row) {
                     $current_custom_parent_id = $created->id;
                 }
                 $mail_data['products'][$i] = $basement->name;
@@ -1169,18 +1181,18 @@ class SaleController extends Controller
             } else
                 $mail_data['products'][$i] = $lims_product_data->name;
             //deduct imei number if available
-            if ($imei_number[$i] && !str_contains($imei_number[$i], "null") && $data['sale_status'] == 1) {
-                $imei_numbers = explode(",", $imei_number[$i]);
-                $all_imei_numbers = explode(",", $lims_product_warehouse_data->imei_number);
-                foreach ($imei_numbers as $number) {
-                    if (($j = array_search($number, $all_imei_numbers)) !== false) {
-                        unset($all_imei_numbers[$j]);
-                    }
-                }
+            // if ($imei_number[$i] && !str_contains($imei_number[$i], "null") && $data['sale_status'] == 1) {
+            //     $imei_numbers = explode(",", $imei_number[$i]);
+            //     $all_imei_numbers = explode(",", $lims_product_warehouse_data->imei_number);
+            //     foreach ($imei_numbers as $number) {
+            //         if (($j = array_search($number, $all_imei_numbers)) !== false) {
+            //             unset($all_imei_numbers[$j]);
+            //         }
+            //     }
 
-                $lims_product_warehouse_data->imei_number = implode(",", $all_imei_numbers);
-                $lims_product_warehouse_data->save();
-            }
+            //     $lims_product_warehouse_data->imei_number = implode(",", $all_imei_numbers);
+            //     $lims_product_warehouse_data->save();
+            // }
             if ($lims_product_data->type == 'digital')
                 $mail_data['file'][$i] = url('/product/files') . '/' . $lims_product_data->file;
             else
@@ -1201,11 +1213,14 @@ class SaleController extends Controller
             $product_sale['custom_sort'] = (isset($custom_sort[$i]) && $custom_sort[$i] !== '' && $custom_sort[$i] !== null) ? (int) $custom_sort[$i] : null;
             $is_parent = isset($is_customize_parent[$i]) && (int) $is_customize_parent[$i] === 1;
             $product_sale['custom_parent_id'] = $is_parent ? null : $current_custom_parent_id;
-            if ($imei_number[$i] && !str_contains($imei_number[$i], "null")) {
-                $product_sale['imei_number'] = $imei_number[$i];
-            } else {
+            $has_customize_type = !empty($product_sale['customize_type_id']);
+            $product_sale['pos_row_type'] = $is_parent ? 'parent' : ($has_customize_type ? 'child' : 'display');
+            $product_sale['pos_sort_order'] = $i + 1;
+            // if ($imei_number[$i] && !str_contains($imei_number[$i], "null")) {
+            //     $product_sale['imei_number'] = $imei_number[$i];
+            // } else {
                 $product_sale['imei_number'] = null;
-            }
+            // }
             $product_sale['qty'] = $mail_data['qty'][$i] = $qty[$i];
             $product_sale['sale_unit_id'] = $sale_unit_id;
             $product_sale['net_unit_price'] = $net_unit_price[$i];
@@ -1438,7 +1453,7 @@ class SaleController extends Controller
                 // Restaurant order completed
                 return response()->json($lims_sale_data->id);
             } elseif ($data['pos']) {
-                return response()->json(['redirect' => url('pos')]);
+                return response()->json(['redirect' => url('pos'), 'id' => $lims_sale_data->id]);
             } else {
                 return response()->json(['redirect' => url('sales')]);
             }
@@ -2185,14 +2200,20 @@ class SaleController extends Controller
 
             if (!empty($id)) {
                 $lims_sale_data = Sale::find($id);
-                // Same order as stored (create): one row per product_sale
-                $lims_product_sale_data = Product_Sale::where('sale_id', $id)->orderBy('id')->get();
+                if (!$lims_sale_data) {
+                    return redirect()->route('sale.pos')->with('message', __('db.This draft no longer exists or was already submitted.'));
+                }
+                // Order for edit: use stored pos_sort_order so order matches create exactly; fallback for old records
+                $lims_product_sale_data = Product_Sale::where('sale_id', $id)
+                    ->orderByRaw('COALESCE(pos_sort_order, 999999) ASC')
+                    ->orderBy('id')
+                    ->get();
                 $variables[] = 'lims_sale_data';
                 $variables[] = 'lims_product_sale_data';
 
                 $draft_product_data = [];
                 $draft_product_discount = [
-                    'order_discount' => $lims_sale_data->order_discount,
+                    'order_discount' => $lims_sale_data->order_discount ?? 0,
                     'discount' => []
                 ];
 
@@ -2231,9 +2252,11 @@ class SaleController extends Controller
                     }
                     // is_customize_parent = 1 only for parent row (tray/box from warehouse_store/basement)
                     // Display products: custom_parent_id=null, warehouse_store=null → 0
-                    // Parent (tray): warehouse_store set, custom_parent_id=null → 1
-                    // Child: custom_parent_id set → 0
-                    $is_parent = ($product_sale->warehouse_store_product_id !== null && $product_sale->custom_parent_id === null);
+                    // Parent (tray): warehouse_store set, customize_type_id set, custom_parent_id=null/empty/0 → 1
+                    // Child: customize_type_id set, custom_parent_id set → 0
+                    $hasCustomizeType = !empty($product_sale->customize_type_id);
+                    $hasParentId = ($product_sale->custom_parent_id !== null && $product_sale->custom_parent_id !== '' && $product_sale->custom_parent_id !== 0);
+                    $is_parent = ($product_sale->warehouse_store_product_id !== null && $hasCustomizeType && !$hasParentId);
 
                     $draft_product_data[] = [
                         'code'                  => $product_code,
@@ -2249,9 +2272,24 @@ class SaleController extends Controller
                     ];
                 }
 
+                // Full row data for edit POS: same format as create (display + customize parent/child) without ajax
+                $pos_edit_product_rows = [];
+                foreach ($lims_product_sale_data as $product_sale) {
+                    $row = $this->buildPosEditRowFromProductSale($product_sale, $lims_sale_data);
+                    if ($row !== null) {
+                        $pos_edit_product_rows[] = $row;
+                    }
+                }
+                $variables[] = 'pos_edit_product_rows';
 
                 $variables[] = 'draft_product_data';
                 $variables[] = 'draft_product_discount';
+
+                // All payments for edit (multiple payment rows); first used for payment_receiver/note
+                $pos_payments = Payment::where('sale_id', $id)->orderBy('id')->get();
+                $pos_first_payment = $pos_payments->first();
+                $variables[] = 'pos_payments';
+                $variables[] = 'pos_first_payment';
             }
 
             if (in_array('restaurant', explode(',', $general_setting->modules))) {
@@ -2361,6 +2399,180 @@ class SaleController extends Controller
             $pos_empty_tray ? $pos_empty_tray->id : null,
             $pos_customer_tray ? $pos_customer_tray->id : null,
         ]));
+    }
+
+    /**
+     * Build one POS table row data from a Product_Sale (same format as limsProductSearch response).
+     * Used for edit POS so rows render in same format as create (display + customize parent/child).
+     */
+    private function buildPosEditRowFromProductSale(Product_Sale $ps, Sale $sale): ?array
+    {
+        $qty = (float) $ps->qty;
+        $price = (float) $ps->net_unit_price;
+        // Use stored pos_row_type when available (set at create); fallback to derived for old records
+        if (!empty($ps->pos_row_type)) {
+            $is_parent = ($ps->pos_row_type === 'parent');
+        } else {
+            $hasCustomizeType = !empty($ps->customize_type_id);
+            $hasParentId = ($ps->custom_parent_id !== null && $ps->custom_parent_id !== '' && $ps->custom_parent_id !== 0);
+            $is_parent = ($ps->warehouse_store_product_id !== null && $hasCustomizeType && !$hasParentId);
+        }
+
+        // Child rows must be a product inside the box, not the box itself. If stored as box (warehouse_store_product_id), skip basement and use product_id; else we cannot show correct product.
+        if ($ps->warehouse_store_product_id && $ps->pos_row_type !== 'child') {
+            $basement = Basement::find($ps->warehouse_store_product_id);
+            if (!$basement) {
+                return null;
+            }
+            $taxRate = 0;
+            $taxName = 'No Tax';
+            if ($basement->tax_id) {
+                $tax = Tax::find($basement->tax_id);
+                if ($tax) {
+                    $taxRate = $tax->rate;
+                    $taxName = $tax->name;
+                }
+            }
+            $unitNames = $unitOperators = $unitValues = ['n/a'];
+            if ($basement->sale_unit_id) {
+                $saleUnit = Unit::find($basement->sale_unit_id);
+                if ($saleUnit) {
+                    $unitNames = [$saleUnit->unit_name];
+                    $unitOperators = [$saleUnit->operator ?? ' *'];
+                    $unitValues = [$saleUnit->operation_value ?? 1];
+                }
+            }
+            $warehouseQty = (float) ($basement->qty ?? 0);
+            $data = [
+                $basement->name,
+                $basement->code,
+                $price,
+                $taxRate,
+                $taxName,
+                $basement->tax_method ?? null,
+                implode(',', $unitNames) . ',',
+                implode(',', $unitOperators) . ',',
+                implode(',', $unitValues) . ',',
+                'ws_' . $basement->id,
+                null,
+                0,
+                0,
+                0,
+                0,
+                $qty,
+                $basement->price ?? 0,
+                $basement->cost ?? 0,
+                $ps->imei_number ?? null,
+                $warehouseQty,
+                'product',
+                null,
+                ''
+            ];
+            $cust_id = ($ps->pos_row_type === 'display') ? null : ($ps->customize_type_id ?? null);
+            return [
+                'data' => $data,
+                'customize_type_id' => $cust_id,
+                'custom_sort' => $ps->custom_sort !== null && $ps->custom_sort !== '' ? (int) $ps->custom_sort : null,
+                'is_customize_parent' => $is_parent ? 1 : 0,
+                'pos_row_type' => $ps->pos_row_type,
+            ];
+        }
+
+        // Normal product row, or child that was wrongly stored as box (use product_id)
+        if (!$ps->product_id) {
+            return null;
+        }
+        $product = Product::find($ps->product_id);
+        if (!$product) {
+            return null;
+        }
+        $taxRate = (float) ($ps->tax_rate ?? 0);
+        $taxName = 'No Tax';
+        if ($product->tax_id ?? null) {
+            $tax = Tax::find($product->tax_id);
+            if ($tax) {
+                $taxRate = $tax->rate;
+                $taxName = $tax->name;
+            }
+        }
+        $unitNames = $unitOperators = $unitValues = ['n/a'];
+        if (in_array($product->type ?? '', ['standard', 'combo'])) {
+            $units = Unit::where('base_unit', $product->unit_id)->orWhere('id', $product->unit_id)->get();
+            $unitNames = $unitOperators = $unitValues = [];
+            foreach ($units as $unit) {
+                if ($product->sale_unit_id == $unit->id) {
+                    array_unshift($unitNames, $unit->unit_name);
+                    array_unshift($unitOperators, $unit->operator);
+                    array_unshift($unitValues, $unit->operation_value);
+                } else {
+                    $unitNames[] = $unit->unit_name;
+                    $unitOperators[] = $unit->operator;
+                    $unitValues[] = $unit->operation_value;
+                }
+            }
+        }
+        $productVariantId = $ps->variant_id ?? null;
+        $code = $product->code;
+        if ($productVariantId) {
+            $pv = ProductVariant::find($productVariantId);
+            if ($pv) {
+                $code = $pv->item_code ?? $product->code;
+            }
+        }
+        $warehouseQty = 0;
+        $pw = Product_Warehouse::where('product_id', $product->id)->where('warehouse_id', $sale->warehouse_id);
+        if ($productVariantId) {
+            $pw = $pw->where('variant_id', $productVariantId);
+        } else {
+            $pw = $pw->whereNull('variant_id');
+        }
+        $pw = $pw->first();
+        if ($pw) {
+            $warehouseQty = (float) $pw->qty;
+        }
+        $batch = $ps->product_batch_id ? ProductBatch::find($ps->product_batch_id) : null;
+        $isBatch = ($product->type !== 'combo' && ($product->is_batch ?? 0));
+        $data = [
+            $product->name,
+            $code,
+            $price,
+            $taxRate,
+            $taxName,
+            $product->tax_method ?? null,
+            implode(',', $unitNames) . ',',
+            implode(',', $unitOperators) . ',',
+            implode(',', $unitValues) . ',',
+            $product->id,
+            $productVariantId,
+            $product->promotion ?? 0,
+            $isBatch ? 1 : 0,
+            $product->is_imei ?? 0,
+            $product->is_variant ?? 0,
+            $qty,
+            $product->wholesale_price ?? 0,
+            $product->cost ?? 0,
+            $ps->imei_number ?? null,
+            $warehouseQty,
+            $product->type ?? 'standard',
+            $ps->product_batch_id ?? null,
+            $batch ? ($batch->batch_no ?? '') : ''
+        ];
+        $general_setting = cache()->has('general_setting') ? cache()->get('general_setting') : null;
+        if (!$general_setting) {
+            $general_setting = DB::table('general_settings')->select('modules')->first();
+        }
+        if ($general_setting && in_array('restaurant', explode(',', $general_setting->modules)) && !empty($product->extras)) {
+            $extras = Product::whereIn('id', explode(',', $product->extras))->where('is_active', 1)->get();
+            $data[] = $extras;
+        }
+        $cust_id = (!empty($ps->pos_row_type) && $ps->pos_row_type === 'display') ? null : ($ps->customize_type_id ?? null);
+        return [
+            'data' => $data,
+            'customize_type_id' => $cust_id,
+            'custom_sort' => $ps->custom_sort !== null && $ps->custom_sort !== '' ? (int) $ps->custom_sort : null,
+            'is_customize_parent' => 0,
+            'pos_row_type' => $ps->pos_row_type ?? null,
+        ];
     }
 
     public function getProducts($warehouse_id, $key, $cat_or_brand_id)
@@ -3776,6 +3988,13 @@ class SaleController extends Controller
         $product_sale = [];
 
         foreach ($product_id as $i => $id) {
+            $is_child_row = !(isset($is_customize_parent[$i]) && (int) $is_customize_parent[$i] === 1)
+                && (isset($customize_type_id[$i]) && $customize_type_id[$i] !== '' && $customize_type_id[$i] !== null);
+            // Child row must be a product inside the box, not the box (ws_) itself
+            if ($is_child_row && is_string($id) && str_starts_with($id, 'ws_')) {
+                \Log::warning('POS store: child row has box id (ws_), skipping. Row index=' . $i);
+                continue;
+            }
             if (is_string($id) && str_starts_with($id, 'ws_')) {
                 $basement_id = (int) substr($id, 3);
                 $basement = Basement::find($basement_id);
@@ -3785,6 +4004,9 @@ class SaleController extends Controller
                     $lims_sale_unit_data = Unit::where('unit_name', $sale_unit[$i])->first();
                     if ($lims_sale_unit_data) $sale_unit_id = $lims_sale_unit_data->id;
                 }
+                $is_parent_row = isset($is_customize_parent[$i]) && (int) $is_customize_parent[$i] === 1;
+                $has_ct = isset($customize_type_id[$i]) && $customize_type_id[$i] !== '' && $customize_type_id[$i] !== null;
+                $pos_row_type = $is_parent_row ? 'parent' : ($has_ct ? 'child' : 'display');
                 $product_sale = [
                     'sale_id' => $sale->id,
                     'product_id' => null,
@@ -3798,12 +4020,14 @@ class SaleController extends Controller
                     'tax_rate' => $tax_rate[$i] ?? 0,
                     'tax' => $tax[$i] ?? 0,
                     'total' => $total[$i] ?? 0,
-                    'customize_type_id' => (isset($customize_type_id[$i]) && $customize_type_id[$i] !== '' && $customize_type_id[$i] !== null) ? $customize_type_id[$i] : null,
+                    'customize_type_id' => $has_ct ? $customize_type_id[$i] : null,
                     'custom_sort' => (isset($custom_sort[$i]) && $custom_sort[$i] !== '' && $custom_sort[$i] !== null) ? (int) $custom_sort[$i] : null,
-                    'custom_parent_id' => isset($is_customize_parent[$i]) && (int) $is_customize_parent[$i] === 1 ? null : $current_custom_parent_id,
+                    'custom_parent_id' => $is_parent_row ? null : $current_custom_parent_id,
+                    'pos_row_type' => $pos_row_type,
+                    'pos_sort_order' => $i + 1,
                 ];
                 $created = Product_Sale::create($product_sale);
-                if (isset($is_customize_parent[$i]) && (int) $is_customize_parent[$i] === 1) {
+                if ($is_parent_row) {
                     $current_custom_parent_id = $created->id;
                 }
                 continue;
@@ -3907,6 +4131,8 @@ class SaleController extends Controller
                 $product_sale['custom_sort'] = (isset($custom_sort[$i]) && $custom_sort[$i] !== '' && $custom_sort[$i] !== null) ? (int) $custom_sort[$i] : null;
                 $is_parent = isset($is_customize_parent[$i]) && (int) $is_customize_parent[$i] === 1;
                 $product_sale['custom_parent_id'] = $is_parent ? null : $current_custom_parent_id;
+                $product_sale['pos_row_type'] = $is_parent ? 'parent' : (!empty($product_sale['customize_type_id']) ? 'child' : 'display');
+                $product_sale['pos_sort_order'] = $i + 1;
                 $product_sale['imei_number'] = (!empty($imei_number[$i]) && !str_contains($imei_number[$i], "null")) ? $imei_number[$i] : null;
                 $product_sale['qty'] = $qty[$i] ?? 0;
                 $product_sale['sale_unit_id'] = $sale_unit_id;
