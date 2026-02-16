@@ -802,13 +802,6 @@ class SaleController extends Controller
             else
                 $data['payment_status'] = 4;
 
-            if (!empty($data['draft'])) {
-                $lims_sale_data = Sale::find($data['sale_id']);
-                if ($lims_sale_data) {
-                    Product_Sale::where('sale_id', $data['sale_id'])->delete();
-                    $lims_sale_data->delete();
-                }
-            }
         } else {
             if (!isset($data['reference_no']))
                 $data['reference_no'] = $this->generateInvoiceName('sr-');
@@ -858,9 +851,33 @@ class SaleController extends Controller
             $data['order_type'] = 1;
         }
 
-        //inserting data to sales table
-        $lims_sale_data = Sale::create($data);
-
+        // POS edit: update same sale (do not delete + create)
+        $lims_sale_data = null;
+        if (!empty($data['draft']) && !empty($data['sale_id'])) {
+            $existing = Sale::find($data['sale_id']);
+            if ($existing) {
+                // Restore warehouse store (basement) stock for removed rows before delete
+                $old_pos_rows = Product_Sale::where('sale_id', $data['sale_id'])->get();
+                foreach ($old_pos_rows as $old_row) {
+                    if ($old_row->warehouse_store_product_id && $existing->sale_status == 1) {
+                        $old_basement = Basement::find($old_row->warehouse_store_product_id);
+                        if ($old_basement && $old_basement->qty !== null) {
+                            $old_basement->qty = (float) $old_basement->qty + (float) $old_row->qty;
+                            $old_basement->save();
+                        }
+                    }
+                }
+                Product_Sale::where('sale_id', $data['sale_id'])->delete();
+                Payment::where('sale_id', $data['sale_id'])->delete();
+                $updateData = $data;
+                unset($updateData['sale_id'], $updateData['draft']);
+                $existing->update($updateData);
+                $lims_sale_data = $existing;
+            }
+        }
+        if (!$lims_sale_data) {
+            $lims_sale_data = Sale::create($data);
+        }
 
         // add the $new_data variable value to $data['paid_amount'] variable
         $data['paid_amount'] = $new_data['paid_amount'];
@@ -965,10 +982,11 @@ class SaleController extends Controller
         $custom_sort = $data['custom_sort'] ?? [];
         $is_customize_parent = $data['is_customize_parent'] ?? [];
         $product_count = count($product_id);
-        // Pad arrays so index $i always exists (avoid undefined index when POS sends fewer)
+        // Pad arrays so index $i always exists (avoid undefined index when POS sends fewer, e.g. edit without product_batch_id per row)
         $customize_type_id = array_replace(array_fill(0, $product_count, null), array_slice($customize_type_id, 0, $product_count));
         $custom_sort = array_replace(array_fill(0, $product_count, null), array_slice($custom_sort, 0, $product_count));
         $is_customize_parent = array_replace(array_fill(0, $product_count, 0), array_slice($is_customize_parent, 0, $product_count));
+        $product_batch_id = array_replace(array_fill(0, $product_count, null), array_slice(is_array($product_batch_id) ? $product_batch_id : [], 0, $product_count));
         $current_custom_parent_id = null;
         $product_sale = [];
         $log_data['item_description'] = '';
@@ -1020,6 +1038,12 @@ class SaleController extends Controller
                 $created = Product_Sale::create($product_sale);
                 if ($is_parent_row) {
                     $current_custom_parent_id = $created->id;
+                }
+                // Deduct warehouse store (basement) stock when sale is completed
+                if ((int) ($data['sale_status'] ?? 0) === 1 && $basement->qty !== null) {
+                    $deduct_qty = (float) $qty[$i];
+                    $basement->qty = max(0, (float) $basement->qty - $deduct_qty);
+                    $basement->save();
                 }
                 $mail_data['products'][$i] = $basement->name;
                 $mail_data['unit'][$i] = $sale_unit[$i] ?? '';

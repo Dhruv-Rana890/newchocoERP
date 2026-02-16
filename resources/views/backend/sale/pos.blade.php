@@ -4099,6 +4099,7 @@
             cols += '<td class="col-sm-2 sub-total-cell"><span class="sub-total"></span> <button type="button" class="ibtnDel btn btn-danger btn-sm" title="' + {!! json_encode(__('db.Remove')) !!} + '"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg></button></td>';
             cols += '<input type="hidden" class="product-code" name="product_code[]" value="' + data[1] + '"/>';
             cols += '<input type="hidden" class="product-id" name="product_id[]" value="' + data[9] + '"/>';
+            cols += '<input type="hidden" class="product-batch-id" name="product_batch_id[]" value="' + (data[21] != null && data[21] !== '' ? data[21] : '') + '"/>';
             cols += '<input type="hidden" class="product_type" name="product_type[]" value="' + data[20] + '"/>';
             cols += '<input type="hidden" class="product_price" />';
             cols += '<input type="hidden" class="sale-unit" name="sale_unit[]" value="' + temp_unit_name[0] + '"/>';
