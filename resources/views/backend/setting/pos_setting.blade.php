@@ -69,7 +69,7 @@
                                     <div class="form-group">
                                         <label>{{ __('db.Displayed Number of Product Row') }} *</label>
                                         <input type="number" name="product_number" class="form-control"
-                                            value="@if ($lims_pos_setting_data) {{ $lims_pos_setting_data->product_number }} @endif"
+                                            value="{{ old('product_number', $lims_pos_setting_data ? $lims_pos_setting_data->product_number : '') }}"
                                             required />
                                     </div>
                                 </div>
@@ -121,6 +121,14 @@
                                     <label class="mt-2">{{ __('db.print_invoice') }} <x-info
                                             title="If unchecked invoice will not print after sales"
                                             type="info" /></label>
+                                </div>
+                                <div class="col-md-3 mt-2 mb-2">
+                                    <label class="mt-2">{{ __('db.POS Invoice Prefix') }} <x-info
+                                            title="Format: PREFIX-YEAR-NUMBER e.g. BDR-2026-1"
+                                            type="info" /></label>
+                                    <input type="text" name="pos_invoice_prefix" class="form-control mt-2"
+                                        placeholder="BDR"
+                                        value="{{ $lims_pos_setting_data && $lims_pos_setting_data->pos_invoice_prefix ? $lims_pos_setting_data->pos_invoice_prefix : 'BDR' }}" />
                                 </div>
                             </div>
                             <hr>

@@ -1899,6 +1899,7 @@ class TenantDatabaseSeeder extends Seeder
                     'payment_options' => 'cash,card,cheque,gift_card,deposit,paypal',
                     'invoice_option' => 'thermal',
                     'thermal_invoice_size' => '80',
+                    'pos_invoice_prefix' => 'BDR',
                 ]
             ]);
         }

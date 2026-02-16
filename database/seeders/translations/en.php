@@ -9246,6 +9246,11 @@ return array(
         'key' => 'print_invoice',
         'value' => 'Print Invoice',
     ),
+    15439 => array(
+        'locale' => 'en',
+        'key' => 'POS Invoice Prefix',
+        'value' => 'POS Invoice Prefix',
+    ),
     1544 => array(
         'locale' => 'en',
         'key' => 'create_ticket',

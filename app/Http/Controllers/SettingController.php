@@ -765,6 +765,10 @@ class SettingController extends Controller
         else
             $pos_setting->show_print_invoice = true;
 
+        $oldPrefix = trim($pos_setting->pos_invoice_prefix ?? 'BDR');
+        $newPrefix = trim($data['pos_invoice_prefix'] ?? 'BDR');
+        $pos_setting->pos_invoice_prefix = $newPrefix;
+
         $pos_setting->save();
         cache()->forget('pos_setting');
         return redirect()->back()->with('message', __('db.POS setting updated successfully'));

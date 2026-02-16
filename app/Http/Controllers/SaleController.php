@@ -426,29 +426,8 @@ class SaleController extends Controller
                 $nestedData['id'] = $sale->id;
                 $nestedData['key'] = $key;
                 $nestedData['date'] = date(config('date_format') . ' h:i:s a', strtotime($sale->created_at));
-                // Format reference_no: Remove "salepro" and date, format as "2026-{number}"
-                $reference_no = $sale->reference_no;
-                // Remove "salepro" (case insensitive) from reference_no
-                $reference_no = preg_replace('/salepro[-\s]*/i', '', $reference_no);
-                // Pattern: Extract invoice number after date (last 6 digits after last dash)
-                // Examples: "2026-20260118-010857" -> "010857", "salepro20260118-010857" -> "010857"
-                if (preg_match('/[-](\d{6})$/', $reference_no, $matches)) {
-                    // Extract last 6 digits after last dash
-                    $invoice_num = $matches[1];
-                } elseif (preg_match('/2026\d{4}[-]?(\d+)$/', $reference_no, $matches)) {
-                    // Pattern: date followed by invoice number
-                    $invoice_num = $matches[1];
-                    // If more than 6 digits, take last 6
-                    if (strlen($invoice_num) > 6) {
-                        $invoice_num = substr($invoice_num, -6);
-                    }
-                } else {
-                    // Fallback: extract all digits and take last 6
-                    $digits = preg_replace('/[^0-9]/', '', $reference_no);
-                    $invoice_num = strlen($digits) >= 6 ? substr($digits, -6) : $digits;
-                }
-                // Use "2026" as year prefix, then invoice number
-                $nestedData['reference_no'] = '2026-' . ($invoice_num ?: '0');
+                // Use reference_no as stored (POS: from next-pos-invoice-no e.g. BDR-2026-1)
+                $nestedData['reference_no'] = $sale->reference_no;
                 $nestedData['created_by'] = $user->name;
                 $nestedData['customer'] = $sale->customer->name . '<br>' . $sale->customer->phone_number . '<input type="hidden" class="deposit" value="' . ($sale->customer->deposit - $sale->customer->expense) . '" />' . '<input type="hidden" class="points" value="' . $sale->customer->points . '" />';
 
@@ -1479,8 +1458,21 @@ class SaleController extends Controller
     }
 
     /**
+     * Format POS invoice reference: {prefix}-{year}-{sequence} e.g. BDR-2026-1
+     */
+    private function formatPosInvoiceReference(int $sequenceNumber): string
+    {
+        $posSetting = PosSetting::latest()->first();
+        $prefix = $posSetting && !empty(trim($posSetting->pos_invoice_prefix ?? ''))
+            ? trim($posSetting->pos_invoice_prefix)
+            : 'BDR';
+        $year = date('Y');
+        return $prefix . '-' . $year . '-' . $sequenceNumber;
+    }
+
+    /**
      * Get next POS invoice number - concurrency-safe atomic increment.
-     * Format: 1, 2, 3... 999, 1000, 1001 (sequential numbers).
+     * Format: {prefix}-{year}-{sequence} e.g. BDR-2026-1 (configurable in POS Settings).
      * Multiple users creating POS simultaneously will get unique numbers.
      */
     public function getNextPosInvoiceNo()
@@ -1497,7 +1489,8 @@ class SaleController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-                    return ['reference_no' => '1', 'display_number' => 1];
+                    $formatted = $this->formatPosInvoiceReference(1);
+                    return ['reference_no' => $formatted, 'display_number' => $formatted];
                 }
 
                 $nextNumber = $row->last_invoice_number + 1;
@@ -1505,9 +1498,10 @@ class SaleController extends Controller
                     ->where('id', $row->id)
                     ->update(['last_invoice_number' => $nextNumber, 'updated_at' => now()]);
 
+                $formatted = $this->formatPosInvoiceReference($nextNumber);
                 return [
-                    'reference_no' => (string) $nextNumber,
-                    'display_number' => $nextNumber,
+                    'reference_no' => $formatted,
+                    'display_number' => $formatted,
                 ];
             });
 
@@ -1521,6 +1515,7 @@ class SaleController extends Controller
     /**
      * Generate next POS invoice number (internal use at store time).
      * Concurrency-safe - used when reference_no not provided on submit.
+     * Format: {prefix}-{year}-{sequence} e.g. BDR-2026-1
      */
     private function generateNextPosInvoiceNo()
     {
@@ -1535,7 +1530,7 @@ class SaleController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-                return '1';
+                return $this->formatPosInvoiceReference(1);
             }
 
             $nextNumber = $row->last_invoice_number + 1;
@@ -1543,7 +1538,7 @@ class SaleController extends Controller
                 ->where('id', $row->id)
                 ->update(['last_invoice_number' => $nextNumber, 'updated_at' => now()]);
 
-            return (string) $nextNumber;
+            return $this->formatPosInvoiceReference($nextNumber);
         });
 
         return $result;
@@ -5289,24 +5284,32 @@ class SaleController extends Controller
             foreach ($lims_payment_data as $payment) {
                 if ($payment->paying_method == 'Gift Card') {
                     $lims_payment_with_gift_card_data = PaymentWithGiftCard::where('payment_id', $payment->id)->first();
-                    $lims_gift_card_data = GiftCard::find($lims_payment_with_gift_card_data->gift_card_id);
-                    $lims_gift_card_data->expense -= $payment->amount;
-                    $lims_gift_card_data->save();
-                    $lims_payment_with_gift_card_data->delete();
+                    if ($lims_payment_with_gift_card_data) {
+                        $lims_gift_card_data = GiftCard::find($lims_payment_with_gift_card_data->gift_card_id);
+                        if ($lims_gift_card_data) {
+                            $lims_gift_card_data->expense -= $payment->amount;
+                            $lims_gift_card_data->save();
+                        }
+                        $lims_payment_with_gift_card_data->delete();
+                    }
                 } elseif ($payment->paying_method == 'Cheque') {
                     $lims_payment_cheque_data = PaymentWithCheque::where('payment_id', $payment->id)->first();
-                    $lims_payment_cheque_data->delete();
+                    if ($lims_payment_cheque_data)
+                        $lims_payment_cheque_data->delete();
                 } elseif ($payment->paying_method == 'Credit Card') {
                     $lims_payment_with_credit_card_data = PaymentWithCreditCard::where('payment_id', $payment->id)->first();
-                    $lims_payment_with_credit_card_data->delete();
+                    if ($lims_payment_with_credit_card_data)
+                        $lims_payment_with_credit_card_data->delete();
                 } elseif ($payment->paying_method == 'Paypal') {
                     $lims_payment_paypal_data = PaymentWithPaypal::where('payment_id', $payment->id)->first();
                     if ($lims_payment_paypal_data)
                         $lims_payment_paypal_data->delete();
                 } elseif ($payment->paying_method == 'Deposit') {
                     $lims_customer_data = Customer::find($lims_sale_data->customer_id);
-                    $lims_customer_data->expense -= $payment->amount;
-                    $lims_customer_data->save();
+                    if ($lims_customer_data) {
+                        $lims_customer_data->expense -= $payment->amount;
+                        $lims_customer_data->save();
+                    }
                 }
                 $payment->delete();
             }
@@ -5318,8 +5321,10 @@ class SaleController extends Controller
             }
             if ($lims_sale_data->coupon_id) {
                 $lims_coupon_data = Coupon::find($lims_sale_data->coupon_id);
-                $lims_coupon_data->used -= 1;
-                $lims_coupon_data->save();
+                if ($lims_coupon_data) {
+                    $lims_coupon_data->used -= 1;
+                    $lims_coupon_data->save();
+                }
             }
 
             InstallmentPlan::where([
