@@ -714,6 +714,51 @@ class ProductController extends Controller
 
         $lims_product_data = Product::create($data);
 
+        // Deduct basement quantities when creating combo product
+        if ($data['type'] == 'combo' && isset($data['product_list']) && isset($data['qty_list'])) {
+            $product_list_raw = array_filter(array_map('trim', explode(',', $data['product_list'] ?? '')));
+            $qty_list = array_map('floatval', explode(',', $data['qty_list'] ?? ''));
+            
+            DB::beginTransaction();
+            try {
+                foreach ($product_list_raw as $i => $item_id) {
+                    $is_basement = (is_string($item_id) && strpos($item_id, 'b_') === 0);
+                    if (!$is_basement) continue;
+                    
+                    $basement_id = (int) substr($item_id, 2);
+                    if (!$basement_id) continue;
+                    
+                    $required_qty = isset($qty_list[$i]) ? (float) $qty_list[$i] : 0;
+                    if ($required_qty <= 0) continue;
+                    
+                    $basement = Basement::find($basement_id);
+                    if (!$basement) {
+                        \Log::warning("Combo Create - Basement not found - Basement ID: {$basement_id}");
+                        continue;
+                    }
+                    
+                    $basement->refresh(); // Get latest qty
+                    $old_main_qty = (float) ($basement->qty ?? 0);
+                    
+                    if ($old_main_qty < $required_qty) {
+                        \Log::warning("Combo Create - Insufficient basement stock - Basement ID: {$basement_id}, Name: {$basement->name}, Required: {$required_qty}, Available: {$old_main_qty}");
+                        throw new \Exception(__('db.Insufficient stock for') . ' ' . $basement->name . '. ' . __('db.Required') . ': ' . $required_qty . ', ' . __('db.Available') . ': ' . $old_main_qty);
+                    }
+                    
+                    // Update main basement qty
+                    $basement->qty = max(0, $old_main_qty - $required_qty);
+                    $basement->save();
+                    \Log::info("Combo Create - Basement Qty Deducted - Basement ID: {$basement_id}, Name: {$basement->name}, Old Qty: {$old_main_qty}, Deduct: {$required_qty}, New Qty: {$basement->qty}");
+                }
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                // Delete the created combo product if basement deduction fails
+                $lims_product_data->delete();
+                return redirect()->back()->with('message', $e->getMessage())->withInput();
+            }
+        }
+
         $custom_field_data = [];
         $custom_fields = CustomField::where('belongs_to', 'product')->select('name', 'type')->get();
         foreach ($custom_fields as $type => $custom_field) {
@@ -1640,6 +1685,71 @@ class ProductController extends Controller
                 $data['guarantee'] = null;
                 $data['guarantee_type'] = null;
             }
+            // Handle basement quantity restoration/deduction for combo products on update
+            if ($data['type'] == 'combo' && $lims_product_data->type == 'combo') {
+                $old_product_list = $lims_product_data->product_list ?? '';
+                $old_qty_list = array_map('floatval', explode(',', $lims_product_data->qty_list ?? ''));
+                $new_product_list = $data['product_list'] ?? '';
+                $new_qty_list = array_map('floatval', explode(',', $data['qty_list'] ?? ''));
+                
+                // Restore quantities from old basement ingredients
+                if ($old_product_list) {
+                    $old_product_list_raw = array_filter(array_map('trim', explode(',', $old_product_list)));
+                    foreach ($old_product_list_raw as $i => $item_id) {
+                        $is_basement = (is_string($item_id) && strpos($item_id, 'b_') === 0);
+                        if (!$is_basement) continue;
+                        
+                        $basement_id = (int) substr($item_id, 2);
+                        if (!$basement_id) continue;
+                        
+                        $restore_qty = isset($old_qty_list[$i]) ? (float) $old_qty_list[$i] : 0;
+                        if ($restore_qty <= 0) continue;
+                        
+                        $basement = Basement::find($basement_id);
+                        if ($basement) {
+                            $basement->refresh();
+                            $old_main_qty = (float) ($basement->qty ?? 0);
+                            $basement->qty = $old_main_qty + $restore_qty;
+                            $basement->save();
+                            \Log::info("Combo Update - Basement Qty Restored - Basement ID: {$basement_id}, Name: {$basement->name}, Old Qty: {$old_main_qty}, Restore: {$restore_qty}, New Qty: {$basement->qty}");
+                        }
+                    }
+                }
+                
+                // Deduct quantities from new basement ingredients
+                if ($new_product_list) {
+                    $new_product_list_raw = array_filter(array_map('trim', explode(',', $new_product_list)));
+                    foreach ($new_product_list_raw as $i => $item_id) {
+                        $is_basement = (is_string($item_id) && strpos($item_id, 'b_') === 0);
+                        if (!$is_basement) continue;
+                        
+                        $basement_id = (int) substr($item_id, 2);
+                        if (!$basement_id) continue;
+                        
+                        $required_qty = isset($new_qty_list[$i]) ? (float) $new_qty_list[$i] : 0;
+                        if ($required_qty <= 0) continue;
+                        
+                        $basement = Basement::find($basement_id);
+                        if (!$basement) {
+                            \Log::warning("Combo Update - Basement not found - Basement ID: {$basement_id}");
+                            continue;
+                        }
+                        
+                        $basement->refresh();
+                        $old_main_qty = (float) ($basement->qty ?? 0);
+                        
+                        if ($old_main_qty < $required_qty) {
+                            \Log::warning("Combo Update - Insufficient basement stock - Basement ID: {$basement_id}, Name: {$basement->name}, Required: {$required_qty}, Available: {$old_main_qty}");
+                            throw new \Exception(__('db.Insufficient stock for') . ' ' . $basement->name . '. ' . __('db.Required') . ': ' . $required_qty . ', ' . __('db.Available') . ': ' . $old_main_qty);
+                        }
+                        
+                        $basement->qty = max(0, $old_main_qty - $required_qty);
+                        $basement->save();
+                        \Log::info("Combo Update - Basement Qty Deducted - Basement ID: {$basement_id}, Name: {$basement->name}, Old Qty: {$old_main_qty}, Deduct: {$required_qty}, New Qty: {$basement->qty}");
+                    }
+                }
+            }
+
             $lims_product_data->update($data);
             //inserting data for custom fields
             $custom_field_data = [];
@@ -1995,7 +2105,6 @@ class ProductController extends Controller
      */
     public function comboAssemble(Request $request)
     {
-        dd($request->all());
         $request->validate([
             'combo_product_id' => 'required|exists:products,id',
             'combo_warehouse_id' => 'required|exists:warehouses,id',
