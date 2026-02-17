@@ -871,17 +871,13 @@ class SaleController extends Controller
                 $old_pos_rows = Product_Sale::where('sale_id', $data['sale_id'])->orderBy('pos_sort_order')->get();
                 \Log::info("Sale Edit - Found " . count($old_pos_rows) . " old product_sale rows to restore for Sale ID: {$data['sale_id']}, Sale Status: {$existing->sale_status}");
                 foreach ($old_pos_rows as $idx => $old_row) {
-                    \Log::info("Sale Edit - Processing old row #{$idx} - Product Sale ID: {$old_row->id}, Product ID: " . ($old_row->product_id ?? 'NULL') . ", Basement ID: " . ($old_row->warehouse_store_product_id ?? 'NULL') . ", Pos Row Type: " . ($old_row->pos_row_type ?? 'null') . ", Qty: {$old_row->qty}, Sale Unit ID: {$old_row->sale_unit_id}");
-                    
                     // IMPORTANT: Child products come from products table, NOT basement table
                     // Even if child product has warehouse_store_product_id (old data issue), restore from products table
                     $is_child = ($old_row->pos_row_type === 'child');
-                    \Log::info("Sale Edit - Row #{$idx} - Is Child: " . ($is_child ? 'YES' : 'NO') . ", Has warehouse_store_product_id: " . ($old_row->warehouse_store_product_id ? 'YES (' . $old_row->warehouse_store_product_id . ')' : 'NO') . ", Has product_id: " . ($old_row->product_id ? 'YES (' . $old_row->product_id . ')' : 'NO'));
                     
                     // Restore basement (warehouse_store) products - only parent and display types, NOT child
                     // Child products with warehouse_store_product_id should still restore from products table
                     if ($old_row->warehouse_store_product_id && $existing->sale_status == 1 && !$is_child) {
-                        \Log::info("Sale Edit - Row #{$idx} - Entering basement restore block");
                         $old_basement = Basement::find($old_row->warehouse_store_product_id);
                         if ($old_basement && $old_basement->qty !== null) {
                             $restore_qty = (float) $old_row->qty;
@@ -899,7 +895,6 @@ class SaleController extends Controller
                             }
                             \Log::info("Sale Edit - Basement qty restored - Basement ID: {$old_row->warehouse_store_product_id}, Pos Row Type: {$old_row->pos_row_type}, Restore Qty: {$restore_qty}");
                         }
-                        \Log::info("Sale Edit - Row #{$idx} - Skipping products table restore (basement product, not child)");
                         continue; // Skip products table restore for basement products (parent/display only)
                     }
                     
@@ -907,9 +902,7 @@ class SaleController extends Controller
                     // IMPORTANT: Child products ALWAYS restore from products table, even if they have warehouse_store_product_id
                     // Display products also restore from products table
                     // This condition allows child products even if they have warehouse_store_product_id (old data issue)
-                    \Log::info("Sale Edit - Row #{$idx} - Checking products restore condition - sale_status: {$existing->sale_status}, product_id: " . ($old_row->product_id ?? 'NULL') . ", condition result: " . (($existing->sale_status == 1 && $old_row->product_id) ? 'TRUE' : 'FALSE'));
                     if ($existing->sale_status == 1 && $old_row->product_id) {
-                        \Log::info("Sale Edit - Row #{$idx} - Entering products restore block");
                         $old_product = Product::find($old_row->product_id);
                         if ($old_product) {
                             $old_qty = (float) $old_row->qty;
@@ -1001,44 +994,34 @@ class SaleController extends Controller
                             \Log::warning("Sale Edit - Product not found for restore - Product ID: {$old_row->product_id}, Pos Row Type: " . ($old_row->pos_row_type ?? 'unknown'));
                         }
                     } else {
-                        // Log why restore was skipped
-                        \Log::info("Sale Edit - Row #{$idx} - Products restore condition FAILED - Entering else block");
-                        if ($old_row->warehouse_store_product_id && !$is_child) {
-                            \Log::info("Sale Edit - Skipping restore (basement product, not child) - Basement ID: {$old_row->warehouse_store_product_id}, Pos Row Type: " . ($old_row->pos_row_type ?? 'unknown'));
-                        } elseif ($is_child && $old_row->warehouse_store_product_id) {
-                            \Log::warning("Sale Edit - Child product has warehouse_store_product_id but condition failed - Product ID: " . ($old_row->product_id ?? 'NULL') . ", Basement ID: {$old_row->warehouse_store_product_id}, Sale Status: {$existing->sale_status}, Pos Row Type: child");
+                        // Log why restore was skipped (should rarely happen now)
+                        if ($is_child && $old_row->warehouse_store_product_id && $old_row->product_id && $existing->sale_status == 1) {
                             // This should NOT happen - child products with product_id should restore from products table
-                            // If we reach here, there's a bug - let's force restore anyway
-                            if ($old_row->product_id && $existing->sale_status == 1) {
-                                \Log::warning("Sale Edit - FORCING restore for child product - Product ID: {$old_row->product_id}");
-                                // Force restore logic here - copy from above
-                                $old_product = Product::find($old_row->product_id);
-                                if ($old_product) {
-                                    $old_qty = (float) $old_row->qty;
-                                    $pos_row_type = $old_row->pos_row_type ?? 'unknown';
-                                    if ($old_row->sale_unit_id) {
-                                        $old_unit = Unit::find($old_row->sale_unit_id);
-                                        if ($old_unit) {
-                                            if ($old_unit->operator == '*') $old_qty *= $old_unit->operation_value;
-                                            elseif ($old_unit->operator == '/') $old_qty /= $old_unit->operation_value;
-                                        }
+                            // If we reach here, there's an unexpected condition - force restore anyway
+                            \Log::warning("Sale Edit - Child product restore condition failed unexpectedly - Forcing restore - Product ID: {$old_row->product_id}, Basement ID: {$old_row->warehouse_store_product_id}");
+                            $old_product = Product::find($old_row->product_id);
+                            if ($old_product) {
+                                $old_qty = (float) $old_row->qty;
+                                if ($old_row->sale_unit_id) {
+                                    $old_unit = Unit::find($old_row->sale_unit_id);
+                                    if ($old_unit) {
+                                        if ($old_unit->operator == '*') $old_qty *= $old_unit->operation_value;
+                                        elseif ($old_unit->operator == '/') $old_qty /= $old_unit->operation_value;
                                     }
-                                    $old_product->qty += $old_qty;
-                                    $old_product->save();
-                                    $opw = Product_Warehouse::FindProductWithoutVariant($old_row->product_id, $existing->warehouse_id)->first();
-                                    if ($opw) {
-                                        $opw->qty += $old_qty;
-                                        $opw->save();
-                                    }
-                                    \Log::info("Sale Edit - FORCED restore completed - Product ID: {$old_row->product_id}, Restore Qty: {$old_qty}");
                                 }
+                                $old_product->qty += $old_qty;
+                                $old_product->save();
+                                $opw = Product_Warehouse::FindProductWithoutVariant($old_row->product_id, $existing->warehouse_id)->first();
+                                if ($opw) {
+                                    $opw->qty += $old_qty;
+                                    $opw->save();
+                                }
+                                \Log::info("Sale Edit - Forced restore completed - Product ID: {$old_row->product_id}, Restore Qty: {$old_qty}");
                             }
                         } elseif (!$old_row->product_id) {
                             \Log::info("Sale Edit - Skipping restore (no product_id) - Product Sale ID: {$old_row->id}");
                         } elseif ($existing->sale_status != 1) {
-                            \Log::info("Sale Edit - Skipping restore (sale_status != 1) - Sale Status: {$existing->sale_status}, Product ID: " . ($old_row->product_id ?? 'NULL'));
-                        } else {
-                            \Log::warning("Sale Edit - Unknown reason for skipping restore - Row #{$idx}, Product ID: " . ($old_row->product_id ?? 'NULL') . ", Basement ID: " . ($old_row->warehouse_store_product_id ?? 'NULL') . ", Sale Status: {$existing->sale_status}");
+                            \Log::info("Sale Edit - Skipping restore (sale_status != 1) - Sale Status: {$existing->sale_status}");
                         }
                     }
                 }
