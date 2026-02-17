@@ -734,7 +734,7 @@
                         <li><a href="{{ url('addon-list') }}" id="addon-list"> <i
                                     class="dripicons-flag"></i><span>{{ __('db.Addons') }}</span></a></li>
                     @endif
-                    @if (in_array('woocommerce', explode(',', $general_setting->modules)) && Route::has('woocommerce.index'))
+                    @if (in_array('woocommerce', explode(',', $general_setting->modules)))
                         <li><a href="{{ route('woocommerce.index') }}"> <i
                                     class="fa fa-wordpress"></i><span>WooCommerce</span></a></li>
                     @endif
