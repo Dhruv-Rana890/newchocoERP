@@ -851,12 +851,22 @@ class SaleController extends Controller
             $data['order_type'] = 1;
         }
 
+        // POS: validate stock before any changes (prevent over-selling when without_stock is no)
+        if (isset($data['pos']) && is_array($data['product_id'] ?? null)) {
+            $stockError = $this->validatePosStockForOverSelling($data);
+            if ($stockError) {
+                if (request()->ajax() || request()->wantsJson()) {
+                    return response()->json(['error' => $stockError, 'stock_error' => $stockError], 422);
+                }
+                return redirect()->back()->with('stock_error', $stockError);
+            }
+        }
+
         // POS edit: update same sale (do not delete + create)
         $lims_sale_data = null;
         if (!empty($data['draft']) && !empty($data['sale_id'])) {
             $existing = Sale::find($data['sale_id']);
             if ($existing) {
-                // Restore warehouse store (basement) stock for removed rows before delete
                 $old_pos_rows = Product_Sale::where('sale_id', $data['sale_id'])->get();
                 foreach ($old_pos_rows as $old_row) {
                     if ($old_row->warehouse_store_product_id && $existing->sale_status == 1) {
@@ -864,6 +874,60 @@ class SaleController extends Controller
                         if ($old_basement && $old_basement->qty !== null) {
                             $old_basement->qty = (float) $old_basement->qty + (float) $old_row->qty;
                             $old_basement->save();
+                        }
+                    }
+                    // Revert Product/Product_Warehouse stock for regular products (display/child) when sale was completed
+                    if (!$old_row->warehouse_store_product_id && $existing->sale_status == 1 && $old_row->product_id) {
+                        $old_product = Product::find($old_row->product_id);
+                        if ($old_product) {
+                            $old_qty = (float) $old_row->qty;
+                            if ($old_product->type != 'combo' && !$old_row->sale_unit_id) {
+                                continue; // n/a unit, no stock was deducted at create
+                            }
+                            if ($old_row->sale_unit_id) {
+                                $old_unit = Unit::find($old_row->sale_unit_id);
+                                if ($old_unit) {
+                                    if ($old_unit->operator == '*') $old_qty *= $old_unit->operation_value;
+                                    elseif ($old_unit->operator == '/') $old_qty /= $old_unit->operation_value;
+                                }
+                            }
+                            if ($old_product->type == 'combo') {
+                                $pl = explode(",", $old_product->product_list);
+                                $vl = $old_product->variant_list ? explode(",", $old_product->variant_list) : [];
+                                $ql = explode(",", $old_product->qty_list);
+                                foreach ($pl as $idx => $cid) {
+                                    $cd = Product::find($cid);
+                                    if (!$cd) continue;
+                                    if (count($vl) && isset($vl[$idx]) && $vl[$idx]) {
+                                        $cpv = ProductVariant::where([['product_id', $cid], ['variant_id', $vl[$idx]]])->first();
+                                        $cw = Product_Warehouse::where([['product_id', $cid], ['variant_id', $vl[$idx]], ['warehouse_id', $existing->warehouse_id]])->first();
+                                        if ($cpv) { $cpv->qty += $old_row->qty * $ql[$idx]; $cpv->save(); }
+                                        if ($cw) { $cw->qty += $old_row->qty * $ql[$idx]; $cw->save(); }
+                                    } else {
+                                        $cw = Product_Warehouse::where([['product_id', $cid], ['warehouse_id', $existing->warehouse_id]])->first();
+                                    }
+                                    $cd->qty += $old_row->qty * $ql[$idx];
+                                    $cd->save();
+                                    if (isset($cw) && $cw) { $cw->qty += $old_row->qty * $ql[$idx]; $cw->save(); }
+                                }
+                            } else {
+                                $old_product->qty += $old_qty;
+                                $old_product->save();
+                                if ($old_row->variant_id) {
+                                    $opv = ProductVariant::FindExactProduct($old_row->product_id, $old_row->variant_id)->first();
+                                    $opw = Product_Warehouse::FindProductWithVariant($old_row->product_id, $old_row->variant_id, $existing->warehouse_id)->first();
+                                    if ($opv) { $opv->qty += $old_qty; $opv->save(); }
+                                    if ($opw) { $opw->qty += $old_qty; $opw->save(); }
+                                } elseif ($old_row->product_batch_id) {
+                                    $pb = ProductBatch::find($old_row->product_batch_id);
+                                    $opw = Product_Warehouse::where([['product_id', $old_row->product_id], ['product_batch_id', $old_row->product_batch_id], ['warehouse_id', $existing->warehouse_id]])->first();
+                                    if ($pb) { $pb->qty += $old_qty; $pb->save(); }
+                                    if ($opw) { $opw->qty += $old_qty; $opw->save(); }
+                                } else {
+                                    $opw = Product_Warehouse::FindProductWithoutVariant($old_row->product_id, $existing->warehouse_id)->first();
+                                    if ($opw) { $opw->qty += $old_qty; $opw->save(); }
+                                }
+                            }
                         }
                     }
                 }
@@ -2776,6 +2840,7 @@ class SaleController extends Controller
         $is_embedded = $request->data['embedded'] ?? 0;
         $batch_id = $request->data['batch'] ?? '';
         $customerId = $request->data['customer_id'] ?? 0;
+        $warehouseId = $request->data['warehouse_id'] ?? $request->warehouse_id ?? null;
 
         // Validate code
         if (empty($code)) {
@@ -2873,8 +2938,8 @@ class SaleController extends Controller
                     $basement->price ?? 0,
                     $basement->cost ?? 0,
                     $request->data['imei'] ?? null,
-                    $request->data['qty'] ?? 0,
-                    'product',
+                    $basement->qty ?? 0,
+                    'warehouse_store',
                     null,
                     ''
                 ];
@@ -2960,7 +3025,23 @@ class SaleController extends Controller
             $batch = ProductBatch::find($batch_id);
         }
 
-        // Build product array (products only)
+        $warehouseQty = $request->data['qty'] ?? 0;
+        if ($warehouseId && ($product->type ?? '') != 'combo') {
+            if ($product->is_variant && $productVariantId) {
+                $pv = ProductVariant::find($productVariantId);
+                $variantId = $pv ? ($pv->variant_id ?? null) : null;
+                $pw = $variantId ? Product_Warehouse::where([['product_id', $product->id], ['variant_id', $variantId], ['warehouse_id', $warehouseId]])->first() : null;
+                $warehouseQty = $pw ? ($pw->qty ?? 0) : ($pv->qty ?? 0);
+            } elseif (!empty($batch_id)) {
+                $pw = Product_Warehouse::where([['product_id', $product->id], ['product_batch_id', $batch_id], ['warehouse_id', $warehouseId]])->first();
+                $warehouseQty = $pw ? ($pw->qty ?? 0) : 0;
+            } else {
+                $pw = Product_Warehouse::where([['product_id', $product->id], ['warehouse_id', $warehouseId]])->whereNull('variant_id')->whereNull('product_batch_id')->first();
+                $warehouseQty = $pw ? ($pw->qty ?? 0) : ($product->qty ?? 0);
+            }
+        } elseif (($product->type ?? '') == 'combo') {
+            $warehouseQty = $product->qty ?? 0;
+        }
         $productArray = [
             $product->name, //0
             $product->code, //1
@@ -2974,18 +3055,17 @@ class SaleController extends Controller
             $product->id, //9
             $productVariantId, //10
             $product->promotion ?? 0, //11
-            // ($product->type == 'combo' ? 0 : ($product->is_batch ?? 0)), //12 - combo never uses batch
-            0, //12 - combo never uses batch
+            0, //12
             $product->is_imei ?? 0, //13
             $product->is_variant ?? 0, //14
             $qty, //15
             $product->wholesale_price ?? 0, //16
             $product->cost ?? 0, //17
-            $request->data['imei'], //18
-            $request->data['qty'] ?? 0, //19 warehouse qty
+            $request->data['imei'] ?? null, //18
+            $warehouseQty, //19 warehouse/in-stock qty
             $product->type ?? 'standard', //20
             $batch_id, //21
-            $batch->batch_no ?? '' //22
+            $batch ? ($batch->batch_no ?? '') : '' //22
         ];
 
         // Restaurant extras (only for products)
@@ -3877,6 +3957,89 @@ class SaleController extends Controller
     }
 
     /**
+     * Validate POS product quantities against available stock (when without_stock is no).
+     * Returns error message string or null if valid.
+     */
+    private function validatePosStockForOverSelling(array $data): ?string
+    {
+        $gs = cache()->has('general_setting') ? cache()->get('general_setting') : GeneralSetting::latest()->first();
+        if (!$gs || ($gs->without_stock ?? 'yes') === 'yes') return null;
+
+        $product_id = $data['product_id'] ?? [];
+        $product_batch_id = $data['product_batch_id'] ?? [];
+        $product_code = $data['product_code'] ?? [];
+        $qty = $data['qty'] ?? [];
+        $sale_unit = $data['sale_unit'] ?? [];
+        $warehouse_id = $data['warehouse_id'] ?? null;
+        if (!$warehouse_id) return null;
+
+        foreach ($product_id as $i => $id) {
+            if (is_string($id) && str_starts_with($id, 'ws_')) {
+                $basement = Basement::find((int) substr($id, 3));
+                if ($basement && $basement->qty !== null) {
+                    $req = (float) ($qty[$i] ?? 0);
+                    if ($req > (float) $basement->qty) {
+                        return $basement->name . ': Quantity exceeds available stock (' . $basement->qty . ').';
+                    }
+                }
+                continue;
+            }
+            $product = Product::find($id);
+            if (!$product) continue;
+            if (($product->type ?? '') == 'combo') {
+                $reqQty = (float) ($qty[$i] ?? 0);
+                $product_list = explode(",", $product->product_list ?? '');
+                $variant_list = $product->variant_list ? explode(",", $product->variant_list) : [];
+                $qty_list = explode(",", $product->qty_list ?? '');
+                foreach ($product_list as $idx => $child_id) {
+                    $child = Product::find($child_id);
+                    if (!$child) continue;
+                    $need = $reqQty * (float) ($qty_list[$idx] ?? 0);
+                    $avail = 0;
+                    if (count($variant_list) && isset($variant_list[$idx]) && $variant_list[$idx]) {
+                        $pw = Product_Warehouse::where([['product_id', $child_id], ['variant_id', $variant_list[$idx]], ['warehouse_id', $warehouse_id]])->first();
+                        $avail = $pw ? (float) $pw->qty : 0;
+                    } else {
+                        $pw = Product_Warehouse::where([['product_id', $child_id], ['warehouse_id', $warehouse_id]])->whereNull('variant_id')->first();
+                        $avail = $pw ? (float) $pw->qty : (float) ($child->qty ?? 0);
+                    }
+                    if ($need > $avail) {
+                        return $product->name . ' (combo): ' . $child->name . ' has insufficient stock. Need: ' . $need . ', Available: ' . $avail;
+                    }
+                }
+                continue;
+            }
+            if (isset($sale_unit[$i]) && $sale_unit[$i] != 'n/a' && ($product->type ?? '') != 'combo') {
+                $unit = Unit::where('unit_name', $sale_unit[$i])->first();
+                $reqBase = (float) ($qty[$i] ?? 0);
+                if ($unit) {
+                    if ($unit->operator == '*') $reqBase *= $unit->operation_value;
+                    elseif ($unit->operator == '/') $reqBase /= $unit->operation_value;
+                }
+                $available = 0;
+                if (!empty($product->is_variant) && isset($product_code[$i]) && $product_code[$i] !== '') {
+                    $pv = ProductVariant::FindExactProductWithCode($id, $product_code[$i])->first();
+                    if ($pv) {
+                        $pw = Product_Warehouse::FindProductWithVariant($id, $pv->variant_id, $warehouse_id)->first();
+                        $available = $pw ? (float) $pw->qty : 0;
+                    }
+                } elseif (!empty($product_batch_id[$i])) {
+                    $pw = Product_Warehouse::where([['product_id', $id], ['product_batch_id', $product_batch_id[$i]], ['warehouse_id', $warehouse_id]])->first();
+                    $available = $pw ? (float) $pw->qty : 0;
+                } else {
+                    $pw = Product_Warehouse::where([['product_id', $id], ['warehouse_id', $warehouse_id]])
+                        ->whereNull('variant_id')->whereNull('product_batch_id')->first();
+                    $available = $pw ? (float) $pw->qty : (float) ($product->qty ?? 0);
+                }
+                if ($reqBase > $available) {
+                    return $product->name . ': Quantity exceeds available stock (' . $available . ').';
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Update a sale from POS form (same structure as create: order_type, display/customize, product_sales).
      */
     private function updateSaleFromPos(Request $request, $id, Sale $lims_sale_data)
@@ -3904,6 +4067,15 @@ class SaleController extends Controller
 
         // Revert stock for existing product_sales (when sale was completed)
         foreach ($lims_product_sale_data as $product_sale_data) {
+            // Revert basement (warehouse store) stock for display/parent/child with ws_
+            if ($product_sale_data->warehouse_store_product_id && $lims_sale_data->sale_status == 1) {
+                $old_basement = Basement::find($product_sale_data->warehouse_store_product_id);
+                if ($old_basement && $old_basement->qty !== null) {
+                    $old_basement->qty = (float) $old_basement->qty + (float) $product_sale_data->qty;
+                    $old_basement->save();
+                }
+                continue;
+            }
             if ($product_sale_data->warehouse_store_product_id) {
                 continue;
             }
@@ -3938,12 +4110,13 @@ class SaleController extends Controller
                     }
                 }
             }
-            if (($lims_sale_data->sale_status == 1) && $product_sale_data->sale_unit_id != 0) {
-                $old_product_qty = $product_sale_data->qty;
+            // Revert product/warehouse stock when sale was completed (sale_unit_id 0 = n/a, no stock change at create)
+            if ($lims_sale_data->sale_status == 1 && $product_sale_data->sale_unit_id) {
+                $old_product_qty = (float) $product_sale_data->qty;
                 $lims_sale_unit_data = Unit::find($product_sale_data->sale_unit_id);
                 if ($lims_sale_unit_data) {
                     if ($lims_sale_unit_data->operator == '*') $old_product_qty = $old_product_qty * $lims_sale_unit_data->operation_value;
-                    else $old_product_qty = $old_product_qty / $lims_sale_unit_data->operation_value;
+                    elseif ($lims_sale_unit_data->operator == '/') $old_product_qty = $old_product_qty / $lims_sale_unit_data->operation_value;
                 }
                 if ($product_sale_data->variant_id) {
                     $lims_product_variant_data = ProductVariant::select('id', 'qty')->FindExactProduct($product_sale_data->product_id, $product_sale_data->variant_id)->first();
@@ -3962,8 +4135,9 @@ class SaleController extends Controller
                 } else {
                     $lims_product_warehouse_data = Product_Warehouse::FindProductWithoutVariant($product_sale_data->product_id, $lims_sale_data->warehouse_id)->first();
                 }
+                $lims_product_data->qty += $old_product_qty;
+                $lims_product_data->save();
                 if (isset($lims_product_warehouse_data) && $lims_product_warehouse_data) {
-                    $lims_product_data->qty += $old_product_qty;
                     $lims_product_warehouse_data->qty += $old_product_qty;
                     if ($product_sale_data->imei_number && !str_contains($product_sale_data->imei_number, "null")) {
                         if ($lims_product_warehouse_data->imei_number)
@@ -3971,10 +4145,17 @@ class SaleController extends Controller
                         else
                             $lims_product_warehouse_data->imei_number = $product_sale_data->imei_number;
                     }
-                    $lims_product_data->save();
                     $lims_product_warehouse_data->save();
                 }
             }
+        }
+
+        $stockError = $this->validatePosStockForOverSelling($data);
+        if ($stockError) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['error' => $stockError, 'stock_error' => $stockError], 422);
+            }
+            return redirect()->back()->with('stock_error', $stockError);
         }
 
         Product_Sale::where('sale_id', $id)->delete();
@@ -4053,6 +4234,12 @@ class SaleController extends Controller
                 $created = Product_Sale::create($product_sale);
                 if ($is_parent_row) {
                     $current_custom_parent_id = $created->id;
+                }
+                // Deduct basement (warehouse store) stock when sale is completed (POS edit flow)
+                if (($data['sale_status'] ?? 1) == 1 && $basement->qty !== null) {
+                    $deduct_qty = (float) ($qty[$i] ?? 0);
+                    $basement->qty = max(0, (float) $basement->qty - $deduct_qty);
+                    $basement->save();
                 }
                 continue;
             }
@@ -5602,6 +5789,9 @@ class SaleController extends Controller
         $url = url()->previous();
 
         $lims_sale_data = Sale::find($id);
+        if (!$lims_sale_data) {
+            return Redirect::to($url)->with('not_permitted', 'Sale not found.');
+        }
 
         // remove this sale reward point
         $lims_reward_point = RewardPoint::query()->where('sale_id', $lims_sale_data->id)->first();
@@ -5642,6 +5832,14 @@ class SaleController extends Controller
             }
 
             if ($product_sale->warehouse_store_product_id) {
+                if ($lims_sale_data->sale_status == 1) {
+                    $old_basement = Basement::find($product_sale->warehouse_store_product_id);
+                    if ($old_basement && $old_basement->qty !== null) {
+                        $old_basement->qty = (float) $old_basement->qty + (float) $product_sale->qty;
+                        $old_basement->save();
+                    }
+                }
+                $product_sale->delete();
                 continue;
             }
             //adjust product quantity
@@ -5706,8 +5904,10 @@ class SaleController extends Controller
                         ['warehouse_id', $lims_sale_data->warehouse_id]
                     ])->first();
 
-                    $lims_product_batch_data->qty -= $product_sale->qty;
-                    $lims_product_batch_data->save();
+                    if ($lims_product_batch_data) {
+                        $lims_product_batch_data->qty += $product_sale->qty;
+                        $lims_product_batch_data->save();
+                    }
                 } else {
                     $lims_product_warehouse_data = Product_Warehouse::FindProductWithoutVariant($lims_product_data->id, $lims_sale_data->warehouse_id)->first();
                 }

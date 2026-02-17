@@ -14,6 +14,7 @@
     <x-error-message key="phone_number" />
     <x-error-message key="not_permitted" />
     <x-error-message key="error" />
+    <x-error-message key="stock_error" />
 
     <section id="pos-layout" class="forms pos-section hidden-print">
         <div class="container-fluid">
@@ -3041,7 +3042,7 @@
                     var wh = $('#warehouse_id').val();
                     if (!customer_id) { alert('Please select Customer!'); return; }
                     if (!wh) { alert('Please select Warehouse!'); return; }
-                    var product = { code: customerTrayProductCode, qty: 1, pre_qty: 1, imei: null, embedded: 0, batch: '', price: 0, customer_id: customer_id, type: 'product' };
+                    var product = { code: customerTrayProductCode, qty: 1, pre_qty: 1, imei: null, embedded: 0, batch: '', price: 0, customer_id: customer_id, warehouse_id: wh, type: 'product' };
                     $.ajax({
                         type: 'GET',
                         url: '{{ url("sales/lims_product_search") }}',
@@ -3937,7 +3938,7 @@
             if (!warehouse_id) { alert('Please select Warehouse!'); return; }
             var data = $(this).data();
             if (!data.type) data.type = $(this).attr('data-type') || 'product';
-            var product = { code: data.code, qty: data.qty, pre_qty: 1, imei: data.imei || null, embedded: data.embedded || 0, batch: data.batch || '', price: data.price, customer_id: customer_id, type: data.type || 'product' };
+            var product = { code: data.code, qty: data.qty, pre_qty: 1, imei: data.imei || null, embedded: data.embedded || 0, batch: data.batch || '', price: data.price, customer_id: customer_id, warehouse_id: warehouse_id, type: data.type || 'product' };
             var $customizeContainer = $('#customize-product-grid-container');
             var $mainGrid = $('#main-product-grid');
             $.ajax({
@@ -4302,6 +4303,7 @@
                     batch: productInput.batch,
                     price: productInput.price,
                     customer_id: $('#customer_id').val(),
+                    warehouse_id: $('#warehouse_id').val(),
                     type: productInput.type || 'product'
                 };
                 //data += '?'+$('#customer_id').val()+'?'+(parseFloat(pre_qty) + 1);
@@ -5747,39 +5749,39 @@
             $("#draft-latest tbody").html(tableData);
         }
 
-        $("#myTable").on('click', '.plus', function() {
+        $(document).on('click', 'table.order-list .plus', function() {
             rowindex = $(this).closest('tr').index();
-            var qty = parseFloat($('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ') .qty').val());
-            var max_qty = parseFloat($('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ') .qty').attr(
-                'max'));
-            if (!qty)
-                qty = 1;
-            else if (max_qty && qty >= max_qty) {
-                alert("Quantity cannot exceed available stock (" + max_qty + ").");
+            var $row = $('table.order-list tbody tr').eq(rowindex);
+            var qty = parseFloat($row.find('.qty').val()) || 0;
+            var max_qty = parseFloat($row.find('.qty').attr('max'));
+            var product_type = ($row.find('.product_type').val() || '').trim();
+            var hasStockLimit = !isNaN(max_qty) && max_qty >= 0 && (product_type == 'standard' || product_type == 'combo' || product_type == 'raw_material' || product_type == 'warehouse_store');
+            if (!qty) qty = 1;
+            else qty = parseFloat(qty) + 1;
+            if (without_stock == 'no' && hasStockLimit && qty > max_qty) {
+                alert("{{ __('db.Quantity cannot exceed available stock') }} (" + max_qty + ").");
                 return;
-            } else
-                qty = parseFloat(qty) + 1;
+            }
             if (is_variant[rowindex]) {
                 checkQuantity(String(qty), true);
             } else {
-                checkDiscount(qty, true);
+                checkQuantity(qty, true);
             }
         });
 
-        $("#myTable").on('click', '.minus', function() {
+        $(document).on('click', 'table.order-list .minus', function() {
             rowindex = $(this).closest('tr').index();
-            var qty = parseFloat($('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ') .qty').val()) - 1;
+            var $row = $('table.order-list tbody tr').eq(rowindex);
+            var qty = parseFloat($row.find('.qty').val()) - 1;
             if (qty > 0) {
-                $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ') .qty').val(qty);
-
+                $row.find('.qty').val(qty);
                 if (is_variant[rowindex])
                     checkQuantity(String(qty), true);
                 else
-                    checkDiscount(qty, '3');
+                    checkQuantity(qty, true);
             } else {
-                qty = 1;
+                $row.find('.qty').val(1);
             }
-
         });
 
         $("select[name=price_option]").on("change", function() {
@@ -6948,16 +6950,23 @@
             var row_product_code = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.product-code')
                 .val();
             var qty = parseFloat($('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.qty').attr('max'));
-            var product_type = $('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.product_type').val();
+            var product_type = ($('table.order-list tbody tr:nth-child(' + (rowindex + 1) + ')').find('.product_type').val() || '').trim();
             if (without_stock == 'no') {
-                if (product_type.trim() == 'standard' || product_type.trim() == 'combo') {
-                    var operator = unit_operator[rowindex].split(',');
-                    var operation_value = unit_operation_value[rowindex].split(',');
-                    if (operator[0] == '*')
-                        total_qty = sale_qty * operation_value[0];
-                    else if (operator[0] == '/')
-                        total_qty = sale_qty / operation_value[0];
-                    if (total_qty > qty) {
+                if (product_type == 'standard' || product_type == 'combo' || product_type == 'raw_material' || product_type == 'warehouse_store') {
+                    var total_qty = sale_qty;
+                    var op = unit_operator[rowindex];
+                    var opVal = unit_operation_value[rowindex];
+                    if (op && opVal && op !== 'n/a' && opVal !== 'n/a') {
+                        var operator = (typeof op === 'string' ? op : '').split(',');
+                        var operation_value = (typeof opVal === 'string' ? opVal : '').split(',');
+                        if (operator[0] && operation_value[0]) {
+                            if (String(operator[0]).trim() == '*')
+                                total_qty = sale_qty * parseFloat(operation_value[0]) || sale_qty;
+                            else if (String(operator[0]).trim() == '/')
+                                total_qty = sale_qty / (parseFloat(operation_value[0]) || 1);
+                        }
+                    }
+                    if (!isNaN(qty) && qty >= 0 && total_qty > qty) {
                        
                         alert('Quantity exceeds stock quantity!');
 
@@ -7198,11 +7207,29 @@
         $(document).on('submit', '.payment-form', function(e) {
                     e.preventDefault();
 
-                    $("table.order-list tbody .qty").each(function(index) {
-                        if ($(this).val() == '') {
-                            alert('One of products has no quantity!');
+                    var hasInvalidQty = false;
+                    $("table.order-list tbody tr").each(function(index) {
+                        var $qtyInput = $(this).find('.qty');
+                        if ($qtyInput.val() == '' || parseFloat($qtyInput.val()) <= 0) {
+                            alert('{{ __("db.One of products has no quantity") }}!');
+                            hasInvalidQty = true;
+                            return false;
+                        }
+                        if (without_stock == 'no') {
+                            var maxQty = parseFloat($qtyInput.attr('max'));
+                            var productType = ($(this).find('.product_type').val() || '').trim();
+                            if (!isNaN(maxQty) && maxQty >= 0 && (productType == 'standard' || productType == 'combo' || productType == 'raw_material' || productType == 'warehouse_store')) {
+                                var requestedQty = parseFloat($qtyInput.val());
+                                if (requestedQty > maxQty) {
+                                    var prodName = $(this).find('.product-title').text().trim().split('\n')[0] || 'Product';
+                                    alert('Quantity exceeds available stock: ' + prodName + '. Max: ' + maxQty);
+                                    hasInvalidQty = true;
+                                    return false;
+                                }
+                            }
                         }
                     });
+                    if (hasInvalidQty) return;
 
                     var rownumber = $('table.order-list tbody tr:last').index();
                     if (rownumber < 0) {
@@ -7361,6 +7388,14 @@
 
                                     },
                                     error: function(xhr) {
+                                        $("#submit-btn").prop('disabled', false).html("{{ __('db.submit') }}");
+                                        if (xhr.status === 422) {
+                                            var r = xhr.responseJSON;
+                                            if (r && (r.stock_error || r.error)) {
+                                                alert(r.stock_error || r.error);
+                                                return;
+                                            }
+                                        }
                                         console.log('Form submission failed.');
                                     }
                                 });
@@ -7626,13 +7661,13 @@
         });
 
         // Show/hide receiver fields based on Order Type (reference: gift_order_shop / gift_order_factory only)
+        // receiver_name, receiver_number values are never cleared (same as sale_note, staff_note etc)
         function toggleReceiverBlocksByOrderType() {
             var orderType = $('#posdeliverytype').val();
             if (orderType === 'gift_order_shop' || orderType === 'gift_order_factory') {
                 $('#receivername_block, #receivernumber_block').removeClass('hide');
             } else {
                 $('#receivername_block, #receivernumber_block').addClass('hide');
-                $('#receiver_name, #receiver_number').val('');
             }
         }
         $(document).on('change', '#posdeliverytype', toggleReceiverBlocksByOrderType);
