@@ -737,7 +737,7 @@ class SaleController extends Controller
 
     public function store(StoreSaleRequest $request)
     {
-// dd($request->all());
+        // dd($request->all());
         $data = $request->all();
         /*try {*/
         if (isset($request->reference_no)) {

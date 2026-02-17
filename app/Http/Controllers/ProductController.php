@@ -2032,29 +2032,41 @@ class ProductController extends Controller
 
                 if ($is_basement) {
                     $basement = Basement::find($item_id_int);
-                    if (!$basement) continue;
+                    if (!$basement) {
+                        \Log::warning("Combo Assemble - Basement not found - Basement ID: {$item_id_int}");
+                        continue;
+                    }
+                    $basement->refresh(); // Get latest qty
                     $warehouse_id = is_numeric($wh_val) ? (int) $wh_val : 0;
+                    
+                    \Log::info("Combo Assemble - Processing basement ingredient - Basement ID: {$item_id_int}, Name: {$basement->name}, Required Qty: {$required_qty}, Warehouse ID: {$warehouse_id}");
                     
                     // Check stock from basement_warehouse if warehouse is specified, else check main qty
                     if ($warehouse_id > 0) {
                         $basement_warehouse = Basement_Warehouse::getOrCreate($item_id_int, $warehouse_id);
-                        $available_qty = (float) $basement_warehouse->qty;
-                        if ($available_qty < $required_qty) {
-                            throw new \Exception(__('db.Insufficient stock for') . ' ' . $basement->name . '. ' . __('db.Required') . ': ' . $required_qty . ', ' . __('db.Available') . ': ' . $available_qty);
+                        $old_wh_qty = (float) $basement_warehouse->qty;
+                        if ($old_wh_qty < $required_qty) {
+                            \Log::warning("Combo Assemble - Insufficient warehouse stock - Basement ID: {$item_id_int}, Warehouse ID: {$warehouse_id}, Required: {$required_qty}, Available: {$old_wh_qty}");
+                            throw new \Exception(__('db.Insufficient stock for') . ' ' . $basement->name . '. ' . __('db.Required') . ': ' . $required_qty . ', ' . __('db.Available') . ': ' . $old_wh_qty);
                         }
                         // Update basement_warehouse qty
-                        $basement_warehouse->qty = $available_qty - $required_qty;
+                        $basement_warehouse->qty = max(0, $old_wh_qty - $required_qty);
                         $basement_warehouse->save();
+                        \Log::info("Combo Assemble - Basement Warehouse Qty Deducted - Basement ID: {$item_id_int}, Warehouse ID: {$warehouse_id}, Old Qty: {$old_wh_qty}, Deduct: {$required_qty}, New Qty: {$basement_warehouse->qty}");
                     } else {
                         // Fallback to main qty if no warehouse specified
-                        if (($basement->qty ?? 0) < $required_qty) {
-                            throw new \Exception(__('db.Insufficient stock for') . ' ' . $basement->name . '. ' . __('db.Required') . ': ' . $required_qty . ', ' . __('db.Available') . ': ' . ($basement->qty ?? 0));
+                        $old_main_qty = (float) ($basement->qty ?? 0);
+                        if ($old_main_qty < $required_qty) {
+                            \Log::warning("Combo Assemble - Insufficient main stock - Basement ID: {$item_id_int}, Required: {$required_qty}, Available: {$old_main_qty}");
+                            throw new \Exception(__('db.Insufficient stock for') . ' ' . $basement->name . '. ' . __('db.Required') . ': ' . $required_qty . ', ' . __('db.Available') . ': ' . $old_main_qty);
                         }
                     }
                     
                     // Update main basement qty
-                    $basement->qty -= $required_qty;
+                    $old_main_qty = (float) ($basement->qty ?? 0);
+                    $basement->qty = max(0, $old_main_qty - $required_qty);
                     $basement->save();
+                    \Log::info("Combo Assemble - Basement Main Qty Deducted - Basement ID: {$item_id_int}, Name: {$basement->name}, Old Qty: {$old_main_qty}, Deduct: {$required_qty}, New Qty: {$basement->qty}");
                 } else {
                     $product_id = $item_id_int;
                     $variant_id = isset($variant_list[$i]) ? (int) trim($variant_list[$i]) : null;
