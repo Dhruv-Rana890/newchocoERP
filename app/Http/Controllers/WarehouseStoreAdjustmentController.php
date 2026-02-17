@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Warehouse;
 use App\Models\Basement;
+use App\Models\Basement_Warehouse;
 use App\Models\Adjustment;
 use App\Models\ProductAdjustment;
 use Illuminate\Support\Facades\DB;
@@ -176,9 +177,12 @@ class WarehouseStoreAdjustmentController extends Controller
                 $unit_cost = $data['unit_cost'];
             $action = $data['action'];
 
+            $warehouse_id = (int) ($data['warehouse_id'] ?? 0);
+            
             foreach ($basement_id as $key => $bm_id) {
                 $lims_basement_data = Basement::find($bm_id);
                 
+                // Update main basement qty
                 if($action[$key] == '-') {
                     $lims_basement_data->qty -= $qty[$key];
                 }
@@ -186,6 +190,18 @@ class WarehouseStoreAdjustmentController extends Controller
                     $lims_basement_data->qty += $qty[$key];
                 }
                 $lims_basement_data->save();
+                
+                // Update basement_warehouse qty (warehouse-wise stock)
+                if ($warehouse_id > 0) {
+                    $basement_warehouse = Basement_Warehouse::getOrCreate($bm_id, $warehouse_id);
+                    if($action[$key] == '-') {
+                        $basement_warehouse->qty = max(0, (float) $basement_warehouse->qty - $qty[$key]);
+                    }
+                    elseif($action[$key] == '+') {
+                        $basement_warehouse->qty = (float) $basement_warehouse->qty + $qty[$key];
+                    }
+                    $basement_warehouse->save();
+                }
 
                 $basement_adjustment['product_id'] = $bm_id;
                 $basement_adjustment['variant_id'] = null;
@@ -248,7 +264,9 @@ class WarehouseStoreAdjustmentController extends Controller
             foreach ($lims_basement_adjustment_data as $key => $basement_adjustment_data) {
                 $old_basement_id[] = $basement_adjustment_data->product_id;
                 $lims_basement_data = Basement::find($basement_adjustment_data->product_id);
+                $warehouse_id = (int) ($lims_adjustment_data->warehouse_id ?? 0);
                 
+                // Revert main basement qty
                 if($basement_adjustment_data->action == '-') {
                     $lims_basement_data->qty += $basement_adjustment_data->qty;
                 }
@@ -257,14 +275,29 @@ class WarehouseStoreAdjustmentController extends Controller
                 }
                 $lims_basement_data->save();
                 
+                // Revert basement_warehouse qty (warehouse-wise stock)
+                if ($warehouse_id > 0) {
+                    $basement_warehouse = Basement_Warehouse::getOrCreate($basement_adjustment_data->product_id, $warehouse_id);
+                    if($basement_adjustment_data->action == '-') {
+                        $basement_warehouse->qty = (float) $basement_warehouse->qty + $basement_adjustment_data->qty;
+                    }
+                    elseif($basement_adjustment_data->action == '+') {
+                        $basement_warehouse->qty = max(0, (float) $basement_warehouse->qty - $basement_adjustment_data->qty);
+                    }
+                    $basement_warehouse->save();
+                }
+                
                 if( !(in_array($old_basement_id[$key], $basement_id)) ) {
                     $basement_adjustment_data->delete();
                 }
             }
 
+            $warehouse_id = (int) ($data['warehouse_id'] ?? 0);
+            
             foreach ($basement_id as $key => $bm_id) {
                 $lims_basement_data = Basement::find($bm_id);
                 
+                // Update main basement qty
                 if($action[$key] == '-') {
                     $lims_basement_data->qty -= $qty[$key];
                 }
@@ -272,6 +305,18 @@ class WarehouseStoreAdjustmentController extends Controller
                     $lims_basement_data->qty += $qty[$key];
                 }
                 $lims_basement_data->save();
+                
+                // Update basement_warehouse qty (warehouse-wise stock)
+                if ($warehouse_id > 0) {
+                    $basement_warehouse = Basement_Warehouse::getOrCreate($bm_id, $warehouse_id);
+                    if($action[$key] == '-') {
+                        $basement_warehouse->qty = max(0, (float) $basement_warehouse->qty - $qty[$key]);
+                    }
+                    elseif($action[$key] == '+') {
+                        $basement_warehouse->qty = (float) $basement_warehouse->qty + $qty[$key];
+                    }
+                    $basement_warehouse->save();
+                }
 
                 $basement_adjustment['product_id'] = $bm_id;
                 $basement_adjustment['variant_id'] = null;
@@ -320,9 +365,12 @@ class WarehouseStoreAdjustmentController extends Controller
                 }
 
                 $lims_basement_adjustment_data = ProductAdjustment::where('adjustment_id', $id)->get();
+                $warehouse_id = (int) ($lims_adjustment_data->warehouse_id ?? 0);
+                
                 foreach ($lims_basement_adjustment_data as $basement_adjustment_data) {
                     $lims_basement_data = Basement::find($basement_adjustment_data->product_id);
                     
+                    // Revert main basement qty
                     if($basement_adjustment_data->action == '-'){
                         $lims_basement_data->qty += $basement_adjustment_data->qty;
                     }
@@ -330,6 +378,19 @@ class WarehouseStoreAdjustmentController extends Controller
                         $lims_basement_data->qty -= $basement_adjustment_data->qty;
                     }
                     $lims_basement_data->save();
+                    
+                    // Revert basement_warehouse qty (warehouse-wise stock)
+                    if ($warehouse_id > 0) {
+                        $basement_warehouse = Basement_Warehouse::getOrCreate($basement_adjustment_data->product_id, $warehouse_id);
+                        if($basement_adjustment_data->action == '-'){
+                            $basement_warehouse->qty = (float) $basement_warehouse->qty + $basement_adjustment_data->qty;
+                        }
+                        elseif($basement_adjustment_data->action == '+'){
+                            $basement_warehouse->qty = max(0, (float) $basement_warehouse->qty - $basement_adjustment_data->qty);
+                        }
+                        $basement_warehouse->save();
+                    }
+                    
                     $basement_adjustment_data->delete();
                 }
                 $lims_adjustment_data->delete();

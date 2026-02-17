@@ -13,6 +13,7 @@ use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\Warehouse;
 use App\Models\Basement;
+use App\Models\Basement_Warehouse;
 use App\Models\PosSetting;
 use App\Traits\TenantInfo;
 use App\Helpers\DateHelper;
@@ -189,10 +190,20 @@ class WarehouseStorePurchaseController extends Controller
                     return redirect()->back()->with('not_permitted', __('db.Warehouse store item not found or inactive.'));
                 }
 
+                $warehouse_id = (int) ($data['warehouse_id'] ?? 0);
+                
+                // Update main basement qty
                 $lims_basement_data->qty = ($lims_basement_data->qty ?? 0) + $quantity;
                 $lims_basement_data->cost = $unit_cost[$i];
                 $lims_basement_data->price = $net_unit_price[$i];
                 $lims_basement_data->save();
+                
+                // Update basement_warehouse qty (warehouse-wise stock)
+                if ($warehouse_id > 0) {
+                    $basement_warehouse = Basement_Warehouse::getOrCreate($id, $warehouse_id);
+                    $basement_warehouse->qty = (float) $basement_warehouse->qty + $quantity;
+                    $basement_warehouse->save();
+                }
 
                 $log_data['item_description'] .= $lims_basement_data->name . '-' . $qty[$i] . ' ' . $lims_purchase_unit_data->unit_code . '<br>';
 
@@ -739,8 +750,19 @@ class WarehouseStorePurchaseController extends Controller
                         else
                             $recieved_qty = $bm_purchase_data->recieved / $lims_purchase_unit_data->operation_value;
                         $lims_basement_data = Basement::find($bm_purchase_data->basement_id);
+                        $warehouse_id = (int) ($lims_purchase_data->warehouse_id ?? 0);
+                        
+                        // Update main basement qty
                         $lims_basement_data->qty = max(0, ($lims_basement_data->qty ?? 0) - $recieved_qty);
                         $lims_basement_data->save();
+                        
+                        // Update basement_warehouse qty (warehouse-wise stock)
+                        if ($warehouse_id > 0) {
+                            $basement_warehouse = Basement_Warehouse::getOrCreate($bm_purchase_data->basement_id, $warehouse_id);
+                            $basement_warehouse->qty = max(0, (float) $basement_warehouse->qty - $recieved_qty);
+                            $basement_warehouse->save();
+                        }
+                        
                         $log_data['item_description'] .= $lims_basement_data->name . '-' . $recieved_qty . ' ' . $lims_purchase_unit_data->unit_code . '<br>';
                     }
 
@@ -945,8 +967,18 @@ class WarehouseStorePurchaseController extends Controller
                     $old_recieved_value = $old_recieved_value / $lims_purchase_unit_data->operation_value;
                 $lims_basement_data = $this->getBasementQuery()->where('id', $bm_purchase_data->basement_id)->first();
                 if ($lims_basement_data) {
+                    $warehouse_id = (int) ($lims_purchase_data->warehouse_id ?? 0);
+                    
+                    // Update main basement qty
                     $lims_basement_data->qty = max(0, ($lims_basement_data->qty ?? 0) - $old_recieved_value);
                     $lims_basement_data->save();
+                    
+                    // Update basement_warehouse qty (warehouse-wise stock)
+                    if ($warehouse_id > 0) {
+                        $basement_warehouse = Basement_Warehouse::getOrCreate($bm_purchase_data->basement_id, $warehouse_id);
+                        $basement_warehouse->qty = max(0, (float) $basement_warehouse->qty - $old_recieved_value);
+                        $basement_warehouse->save();
+                    }
                 }
             }
 
@@ -965,10 +997,20 @@ class WarehouseStorePurchaseController extends Controller
                     DB::rollback();
                     return redirect()->back()->with('not_permitted', __('db.Warehouse store item not found or inactive.'));
                 }
+                $warehouse_id = (int) ($data['warehouse_id'] ?? 0);
+                
+                // Update main basement qty
                 $lims_basement_data->qty = ($lims_basement_data->qty ?? 0) + $new_recieved_value;
                 $lims_basement_data->cost = $unit_cost[$key];
                 $lims_basement_data->price = $net_unit_price[$key];
                 $lims_basement_data->save();
+                
+                // Update basement_warehouse qty (warehouse-wise stock)
+                if ($warehouse_id > 0) {
+                    $basement_warehouse = Basement_Warehouse::getOrCreate($bm_id, $warehouse_id);
+                    $basement_warehouse->qty = (float) $basement_warehouse->qty + $new_recieved_value;
+                    $basement_warehouse->save();
+                }
 
                 $log_data['item_description'] .= $lims_basement_data->name . '-' . $qty[$key] . ' ' . $lims_purchase_unit_data->unit_code . '<br>';
 

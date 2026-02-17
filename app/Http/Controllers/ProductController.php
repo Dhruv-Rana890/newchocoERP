@@ -30,6 +30,7 @@ use Illuminate\Validation\Rule;
 use App\Models\Product_Supplier;
 use App\Models\Product_Warehouse;
 use App\Models\Basement;
+use App\Models\Basement_Warehouse;
 use Modules\Manufacturing\Entities\Production;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
@@ -2032,9 +2033,26 @@ class ProductController extends Controller
                 if ($is_basement) {
                     $basement = Basement::find($item_id_int);
                     if (!$basement) continue;
-                    if (($basement->qty ?? 0) < $required_qty) {
-                        throw new \Exception(__('db.Insufficient stock for') . ' ' . $basement->name . '. ' . __('db.Required') . ': ' . $required_qty . ', ' . __('db.Available') . ': ' . ($basement->qty ?? 0));
+                    $warehouse_id = is_numeric($wh_val) ? (int) $wh_val : 0;
+                    
+                    // Check stock from basement_warehouse if warehouse is specified, else check main qty
+                    if ($warehouse_id > 0) {
+                        $basement_warehouse = Basement_Warehouse::getOrCreate($item_id_int, $warehouse_id);
+                        $available_qty = (float) $basement_warehouse->qty;
+                        if ($available_qty < $required_qty) {
+                            throw new \Exception(__('db.Insufficient stock for') . ' ' . $basement->name . '. ' . __('db.Required') . ': ' . $required_qty . ', ' . __('db.Available') . ': ' . $available_qty);
+                        }
+                        // Update basement_warehouse qty
+                        $basement_warehouse->qty = $available_qty - $required_qty;
+                        $basement_warehouse->save();
+                    } else {
+                        // Fallback to main qty if no warehouse specified
+                        if (($basement->qty ?? 0) < $required_qty) {
+                            throw new \Exception(__('db.Insufficient stock for') . ' ' . $basement->name . '. ' . __('db.Required') . ': ' . $required_qty . ', ' . __('db.Available') . ': ' . ($basement->qty ?? 0));
+                        }
                     }
+                    
+                    // Update main basement qty
                     $basement->qty -= $required_qty;
                     $basement->save();
                 } else {

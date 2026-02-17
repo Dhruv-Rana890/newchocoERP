@@ -21,6 +21,7 @@ use App\Models\Delivery;
 use App\Models\PosSetting;
 use App\Models\Product_Sale;
 use App\Models\Product_Warehouse;
+use App\Models\Basement_Warehouse;
 use App\Models\Payment;
 use App\Models\Account;
 use App\Models\Coupon;
@@ -869,11 +870,22 @@ class SaleController extends Controller
             if ($existing) {
                 $old_pos_rows = Product_Sale::where('sale_id', $data['sale_id'])->get();
                 foreach ($old_pos_rows as $old_row) {
-                    if ($old_row->warehouse_store_product_id && $existing->sale_status == 1) {
+                    if ($old_row->warehouse_store_product_id && $existing->sale_status == 1 && $old_row->pos_row_type !== 'child') {
                         $old_basement = Basement::find($old_row->warehouse_store_product_id);
                         if ($old_basement && $old_basement->qty !== null) {
-                            $old_basement->qty = (float) $old_basement->qty + (float) $old_row->qty;
+                            $restore_qty = (float) $old_row->qty;
+                            $warehouse_id = (int) ($existing->warehouse_id ?? 0);
+                            
+                            // Restore main basement qty
+                            $old_basement->qty = (float) $old_basement->qty + $restore_qty;
                             $old_basement->save();
+                            
+                            // Restore basement_warehouse qty (warehouse-wise stock)
+                            if ($warehouse_id > 0) {
+                                $basement_warehouse = Basement_Warehouse::getOrCreate($old_row->warehouse_store_product_id, $warehouse_id);
+                                $basement_warehouse->qty = (float) $basement_warehouse->qty + $restore_qty;
+                                $basement_warehouse->save();
+                            }
                         }
                     }
                     // Revert Product/Product_Warehouse stock for regular products (display/child) when sale was completed
@@ -1113,9 +1125,22 @@ class SaleController extends Controller
                     // Check if qty is set and is a valid number (not null, not empty string)
                     if ($basement->qty !== null && $basement->qty !== '' && is_numeric($basement->qty)) {
                         $deduct_qty = (float) $qty[$i];
+                        $warehouse_id = (int) ($data['warehouse_id'] ?? 0);
+                        
+                        // Update main basement qty
                         $old_qty = (float) $basement->qty;
                         $basement->qty = max(0, $old_qty - $deduct_qty);
                         $saved = $basement->save();
+                        
+                        // Update basement_warehouse qty (warehouse-wise stock)
+                        if ($warehouse_id > 0) {
+                            $basement_warehouse = Basement_Warehouse::getOrCreate($basement_id, $warehouse_id);
+                            $old_wh_qty = (float) $basement_warehouse->qty;
+                            $basement_warehouse->qty = max(0, $old_wh_qty - $deduct_qty);
+                            $basement_warehouse->save();
+                            \Log::info("Basement Warehouse Qty Deducted - Basement ID: {$basement_id}, Warehouse ID: {$warehouse_id}, Type: {$pos_row_type}, Old Qty: {$old_wh_qty}, Deduct: {$deduct_qty}, New Qty: {$basement_warehouse->qty}");
+                        }
+                        
                         \Log::info("Basement Qty Deducted - ID: {$basement_id}, Type: {$pos_row_type} (is_parent: " . ($is_parent_row ? 'yes' : 'no') . "), Old Qty: {$old_qty}, Deduct: {$deduct_qty}, New Qty: {$basement->qty}, Saved: " . ($saved ? 'yes' : 'no'));
                     } else {
                         \Log::warning("Basement Qty is invalid - ID: {$basement_id}, Type: {$pos_row_type} (is_parent: " . ($is_parent_row ? 'yes' : 'no') . "), Qty value: " . var_export($basement->qty, true) . ", Cannot deduct");
@@ -4085,12 +4110,24 @@ class SaleController extends Controller
 
         // Revert stock for existing product_sales (when sale was completed)
         foreach ($lims_product_sale_data as $product_sale_data) {
-            // Revert basement (warehouse store) stock for display/parent/child with ws_
-            if ($product_sale_data->warehouse_store_product_id && $lims_sale_data->sale_status == 1) {
+            // Revert basement (warehouse store) stock for display/parent (NOT child)
+            // Child products come from products table, NOT basement
+            if ($product_sale_data->warehouse_store_product_id && $lims_sale_data->sale_status == 1 && $product_sale_data->pos_row_type !== 'child') {
                 $old_basement = Basement::find($product_sale_data->warehouse_store_product_id);
                 if ($old_basement && $old_basement->qty !== null) {
-                    $old_basement->qty = (float) $old_basement->qty + (float) $product_sale_data->qty;
+                    $restore_qty = (float) $product_sale_data->qty;
+                    $warehouse_id = (int) ($lims_sale_data->warehouse_id ?? 0);
+                    
+                    // Restore main basement qty
+                    $old_basement->qty = (float) $old_basement->qty + $restore_qty;
                     $old_basement->save();
+                    
+                    // Restore basement_warehouse qty (warehouse-wise stock)
+                    if ($warehouse_id > 0) {
+                        $basement_warehouse = Basement_Warehouse::getOrCreate($product_sale_data->warehouse_store_product_id, $warehouse_id);
+                        $basement_warehouse->qty = (float) $basement_warehouse->qty + $restore_qty;
+                        $basement_warehouse->save();
+                    }
                 }
                 continue;
             }
@@ -4262,9 +4299,22 @@ class SaleController extends Controller
                     // Check if qty is set and is a valid number (not null, not empty string)
                     if ($basement->qty !== null && $basement->qty !== '' && is_numeric($basement->qty)) {
                         $deduct_qty = (float) ($qty[$i] ?? 0);
+                        $warehouse_id = (int) ($data['warehouse_id'] ?? 0);
+                        
+                        // Update main basement qty
                         $old_qty = (float) $basement->qty;
                         $basement->qty = max(0, $old_qty - $deduct_qty);
                         $saved = $basement->save();
+                        
+                        // Update basement_warehouse qty (warehouse-wise stock)
+                        if ($warehouse_id > 0) {
+                            $basement_warehouse = Basement_Warehouse::getOrCreate($basement_id, $warehouse_id);
+                            $old_wh_qty = (float) $basement_warehouse->qty;
+                            $basement_warehouse->qty = max(0, $old_wh_qty - $deduct_qty);
+                            $basement_warehouse->save();
+                            \Log::info("Basement Warehouse Qty Deducted (Edit) - Basement ID: {$basement_id}, Warehouse ID: {$warehouse_id}, Type: {$pos_row_type}, Old Qty: {$old_wh_qty}, Deduct: {$deduct_qty}, New Qty: {$basement_warehouse->qty}");
+                        }
+                        
                         \Log::info("Basement Qty Deducted (Edit) - ID: {$basement_id}, Type: {$pos_row_type} (is_parent: " . ($is_parent_row ? 'yes' : 'no') . "), Old Qty: {$old_qty}, Deduct: {$deduct_qty}, New Qty: {$basement->qty}, Saved: " . ($saved ? 'yes' : 'no'));
                     } else {
                         \Log::warning("Basement Qty is invalid (Edit) - ID: {$basement_id}, Type: {$pos_row_type} (is_parent: " . ($is_parent_row ? 'yes' : 'no') . "), Qty value: " . var_export($basement->qty, true) . ", Cannot deduct");
@@ -5880,9 +5930,22 @@ class SaleController extends Controller
                     if ($old_basement && $old_basement->qty !== null) {
                         // Use original qty from product_sale (basement qty is stored without unit conversion)
                         $restore_qty = (float) $product_sale->qty;
+                        $warehouse_id = (int) ($lims_sale_data->warehouse_id ?? 0);
+                        
+                        // Restore main basement qty
                         $old_qty = (float) $old_basement->qty;
                         $old_basement->qty = $old_qty + $restore_qty;
                         $old_basement->save();
+                        
+                        // Restore basement_warehouse qty (warehouse-wise stock)
+                        if ($warehouse_id > 0) {
+                            $basement_warehouse = Basement_Warehouse::getOrCreate($product_sale->warehouse_store_product_id, $warehouse_id);
+                            $old_wh_qty = (float) $basement_warehouse->qty;
+                            $basement_warehouse->qty = $old_wh_qty + $restore_qty;
+                            $basement_warehouse->save();
+                            \Log::info("Basement Warehouse Qty Restored on Delete - Basement ID: {$product_sale->warehouse_store_product_id}, Warehouse ID: {$warehouse_id}, Pos Row Type: {$product_sale->pos_row_type}, Restore Qty: {$restore_qty}, Old Qty: {$old_wh_qty}, New Qty: {$basement_warehouse->qty}");
+                        }
+                        
                         \Log::info("Basement Qty Restored on Delete - ID: {$product_sale->warehouse_store_product_id}, Pos Row Type: {$product_sale->pos_row_type}, Restore Qty: {$restore_qty}, Old Qty: {$old_qty}, New Qty: {$old_basement->qty}");
                     }
                 }
