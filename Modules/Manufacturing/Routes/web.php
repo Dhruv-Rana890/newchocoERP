@@ -26,8 +26,22 @@ if(config('database.connections.saleprosaas_landlord')) {
                 Route::get('product_production/{id}', 'productProductionData');
             });
         });
-        Route::resource('manufacturing/productions',ProductionController::class)->except([ 'show']);
-        Route::resource('manufacturing/recipes',RecipeController::class)->except([ 'show']);
+        Route::resource('manufacturing/productions',ProductionController::class)->except([ 'show'])->names([
+            'index' => 'manufacturing.productions.index',
+            'create' => 'manufacturing.productions.create',
+            'store' => 'manufacturing.productions.store',
+            'edit' => 'manufacturing.productions.edit',
+            'update' => 'manufacturing.productions.update',
+            'destroy' => 'manufacturing.productions.destroy',
+        ]);
+        Route::resource('manufacturing/recipes',RecipeController::class)->except([ 'show'])->names([
+            'index' => 'manufacturing.recipes.index',
+            'create' => 'manufacturing.recipes.create',
+            'store' => 'manufacturing.recipes.store',
+            'edit' => 'manufacturing.recipes.edit',
+            'update' => 'manufacturing.recipes.update',
+            'destroy' => 'manufacturing.recipes.destroy',
+        ]);
         Route::post('manufacturing/products/product-data',[ProductController::class,'productData'])->name ('get-products');
         Route::post('manufacturing/product-data',[RecipeController::class,'productData'])->name ('manufacturing.product-data');
         Route::get('manufacturing/recipes/lims_product_search',[ProductController::class,'limsProductSearch'])->name('manufacturing.recipe.product.search');
@@ -48,8 +62,22 @@ else {
                 Route::get('product_production/{id}', 'productProductionData');
             });
         });
-        Route::resource('manufacturing/productions',ProductionController::class)->except([ 'show']);
-        Route::resource('manufacturing/recipes',RecipeController::class)->except([ 'show']);
+        Route::resource('manufacturing/productions',ProductionController::class)->except([ 'show'])->names([
+            'index' => 'manufacturing.productions.index',
+            'create' => 'manufacturing.productions.create',
+            'store' => 'manufacturing.productions.store',
+            'edit' => 'manufacturing.productions.edit',
+            'update' => 'manufacturing.productions.update',
+            'destroy' => 'manufacturing.productions.destroy',
+        ]);
+        Route::resource('manufacturing/recipes',RecipeController::class)->except([ 'show'])->names([
+            'index' => 'manufacturing.recipes.index',
+            'create' => 'manufacturing.recipes.create',
+            'store' => 'manufacturing.recipes.store',
+            'edit' => 'manufacturing.recipes.edit',
+            'update' => 'manufacturing.recipes.update',
+            'destroy' => 'manufacturing.recipes.destroy',
+        ]);
         Route::post('manufacturing/products/product-data',[ProductController::class,'productData'])->name ('get-products');
         Route::post('manufacturing/product-data',[RecipeController::class,'productData'])->name ('manufacturing.product-data');
         Route::get('manufacturing/recipes/lims_product_search',[ProductController::class,'limsProductSearch'])->name('manufacturing.recipe.product.search');

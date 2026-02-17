@@ -393,9 +393,9 @@
                     <a href="#manufacturing" aria-expanded="false" data-toggle="collapse"> <i class="fa fa-industry"></i><span>{{__('db.Manufacturing')}}</span></a>
 
                     <ul id="manufacturing" class="collapse list-unstyled ">
-                        <li id="production-list-menu"><a href="{{route('productions.index')}}">{{__('db.Production List')}}</a></li>
-                        <li id="production-create-menu"><a href="{{route('productions.create')}}">{{__('db.Add Production')}}</a></li>
-                        <li id="production-create-menu"><a href="{{route('recipes.index')}}">{{__('db.Recipe')}}</a></li>
+                        <li id="production-list-menu"><a href="{{route('manufacturing.productions.index')}}">{{__('db.Production List')}}</a></li>
+                        <li id="production-create-menu"><a href="{{route('manufacturing.productions.create')}}">{{__('db.Add Production')}}</a></li>
+                        <li id="recipe-menu"><a href="{{route('manufacturing.recipes.index')}}">{{__('db.Recipe')}}</a></li>
                     </ul>
                 </li>
             @endif
