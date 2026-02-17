@@ -4679,7 +4679,11 @@ class SaleController extends Controller
 
             $lims_sale_data = Sale::with('currency')->find($id);
 
-            $lims_product_sale_data = Product_Sale::where('sale_id', $id)->get();
+            // Order products by pos_sort_order to maintain POS display order (display, parent, child)
+            // Fallback to id for old records without pos_sort_order
+            $lims_product_sale_data = Product_Sale::where('sale_id', $id)
+                ->orderByRaw('COALESCE(pos_sort_order, id) ASC')
+                ->get();
             if (cache()->has('biller_list')) {
                 $lims_biller_data = cache()->get('biller_list')->find($lims_sale_data->biller_id);
             } else {
