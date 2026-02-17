@@ -13,13 +13,13 @@ use Modules\Ecommerce\Http\Controllers\Api\HomePageController;
 |
 */
 
-Route::middleware('auth:api')->get('/ecommerce', function (Request $request) {
-    return $request->user();
-});
+// Route::middleware('auth:api')->get('/ecommerce', function (Request $request) {
+//     return $request->user();
+// });
 
-	Route::middleware(['ecommerce','web'])->group(function () {
-        Route::get('/home', [HomePageController::class, 'homePage']);
-        Route::get('shop/{category}', [HomePageController::class, 'category']);
-        Route::get('product/{product_name}/{product_id}', [HomePageController::class, 'productDetails']);
-        Route::get('brand/{brand}', [HomePageController::class, 'brandProducts']);
-	});
+// 	Route::middleware(['ecommerce','web'])->group(function () {
+//         Route::get('/home', [HomePageController::class, 'homePage']);
+//         Route::get('shop/{category}', [HomePageController::class, 'category']);
+//         Route::get('product/{product_name}/{product_id}', [HomePageController::class, 'productDetails']);
+//         Route::get('brand/{brand}', [HomePageController::class, 'brandProducts']);
+// 	});
