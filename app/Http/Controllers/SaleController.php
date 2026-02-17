@@ -868,8 +868,10 @@ class SaleController extends Controller
         if (!empty($data['draft']) && !empty($data['sale_id'])) {
             $existing = Sale::find($data['sale_id']);
             if ($existing) {
-                $old_pos_rows = Product_Sale::where('sale_id', $data['sale_id'])->get();
-                foreach ($old_pos_rows as $old_row) {
+                $old_pos_rows = Product_Sale::where('sale_id', $data['sale_id'])->orderBy('pos_sort_order')->get();
+                \Log::info("Sale Edit - Found " . count($old_pos_rows) . " old product_sale rows to restore for Sale ID: {$data['sale_id']}, Sale Status: {$existing->sale_status}");
+                foreach ($old_pos_rows as $idx => $old_row) {
+                    \Log::info("Sale Edit - Processing old row #{$idx} - Product Sale ID: {$old_row->id}, Product ID: {$old_row->product_id}, Basement ID: {$old_row->warehouse_store_product_id}, Pos Row Type: " . ($old_row->pos_row_type ?? 'null') . ", Qty: {$old_row->qty}, Sale Unit ID: {$old_row->sale_unit_id}");
                     if ($old_row->warehouse_store_product_id && $existing->sale_status == 1 && $old_row->pos_row_type !== 'child') {
                         $old_basement = Basement::find($old_row->warehouse_store_product_id);
                         if ($old_basement && $old_basement->qty !== null) {
@@ -889,11 +891,17 @@ class SaleController extends Controller
                         }
                     }
                     // Revert Product/Product_Warehouse stock for regular products (display/child) when sale was completed
+                    // This includes both display and child products (both have product_id set, warehouse_store_product_id null)
                     if (!$old_row->warehouse_store_product_id && $existing->sale_status == 1 && $old_row->product_id) {
                         $old_product = Product::find($old_row->product_id);
                         if ($old_product) {
                             $old_qty = (float) $old_row->qty;
+                            $pos_row_type = $old_row->pos_row_type ?? 'unknown';
+                            
+                            \Log::info("Sale Edit - Restoring old product row - Product ID: {$old_row->product_id}, Pos Row Type: {$pos_row_type}, Original Qty: {$old_qty}, Sale Unit ID: {$old_row->sale_unit_id}");
+                            
                             if ($old_product->type != 'combo' && !$old_row->sale_unit_id) {
+                                \Log::info("Sale Edit - Skipping restore (n/a unit, no stock was deducted) - Product ID: {$old_row->product_id}, Pos Row Type: {$pos_row_type}");
                                 continue; // n/a unit, no stock was deducted at create
                             }
                             if ($old_row->sale_unit_id) {
@@ -901,6 +909,7 @@ class SaleController extends Controller
                                 if ($old_unit) {
                                     if ($old_unit->operator == '*') $old_qty *= $old_unit->operation_value;
                                     elseif ($old_unit->operator == '/') $old_qty /= $old_unit->operation_value;
+                                    \Log::info("Sale Edit - Unit conversion applied - Product ID: {$old_row->product_id}, Pos Row Type: {$pos_row_type}, After conversion qty: {$old_qty}");
                                 }
                             }
                             if ($old_product->type == 'combo') {
@@ -922,24 +931,65 @@ class SaleController extends Controller
                                     $cd->save();
                                     if (isset($cw) && $cw) { $cw->qty += $old_row->qty * $ql[$idx]; $cw->save(); }
                                 }
+                                \Log::info("Sale Edit - Combo product restored - Product ID: {$old_row->product_id}, Pos Row Type: {$pos_row_type}, Restored qty: {$old_qty}");
                             } else {
+                                $old_product_qty_before = (float) $old_product->qty;
                                 $old_product->qty += $old_qty;
                                 $old_product->save();
+                                \Log::info("Sale Edit - Main product qty restored - Product ID: {$old_row->product_id}, Pos Row Type: {$pos_row_type}, Old Qty: {$old_product_qty_before}, Restore: {$old_qty}, New Qty: {$old_product->qty}");
+                                
                                 if ($old_row->variant_id) {
                                     $opv = ProductVariant::FindExactProduct($old_row->product_id, $old_row->variant_id)->first();
                                     $opw = Product_Warehouse::FindProductWithVariant($old_row->product_id, $old_row->variant_id, $existing->warehouse_id)->first();
-                                    if ($opv) { $opv->qty += $old_qty; $opv->save(); }
-                                    if ($opw) { $opw->qty += $old_qty; $opw->save(); }
+                                    if ($opv) { 
+                                        $opv_qty_before = (float) $opv->qty;
+                                        $opv->qty += $old_qty; 
+                                        $opv->save();
+                                        \Log::info("Sale Edit - Variant qty restored - Product ID: {$old_row->product_id}, Variant ID: {$old_row->variant_id}, Pos Row Type: {$pos_row_type}, Old Qty: {$opv_qty_before}, Restore: {$old_qty}, New Qty: {$opv->qty}");
+                                    }
+                                    if ($opw) { 
+                                        $opw_qty_before = (float) $opw->qty;
+                                        $opw->qty += $old_qty; 
+                                        $opw->save();
+                                        \Log::info("Sale Edit - Warehouse variant qty restored - Product ID: {$old_row->product_id}, Variant ID: {$old_row->variant_id}, Warehouse ID: {$existing->warehouse_id}, Pos Row Type: {$pos_row_type}, Old Qty: {$opw_qty_before}, Restore: {$old_qty}, New Qty: {$opw->qty}");
+                                    }
                                 } elseif ($old_row->product_batch_id) {
                                     $pb = ProductBatch::find($old_row->product_batch_id);
                                     $opw = Product_Warehouse::where([['product_id', $old_row->product_id], ['product_batch_id', $old_row->product_batch_id], ['warehouse_id', $existing->warehouse_id]])->first();
-                                    if ($pb) { $pb->qty += $old_qty; $pb->save(); }
-                                    if ($opw) { $opw->qty += $old_qty; $opw->save(); }
+                                    if ($pb) { 
+                                        $pb_qty_before = (float) $pb->qty;
+                                        $pb->qty += $old_qty; 
+                                        $pb->save();
+                                        \Log::info("Sale Edit - Batch qty restored - Product ID: {$old_row->product_id}, Batch ID: {$old_row->product_batch_id}, Pos Row Type: {$pos_row_type}, Old Qty: {$pb_qty_before}, Restore: {$old_qty}, New Qty: {$pb->qty}");
+                                    }
+                                    if ($opw) { 
+                                        $opw_qty_before = (float) $opw->qty;
+                                        $opw->qty += $old_qty; 
+                                        $opw->save();
+                                        \Log::info("Sale Edit - Warehouse batch qty restored - Product ID: {$old_row->product_id}, Batch ID: {$old_row->product_batch_id}, Warehouse ID: {$existing->warehouse_id}, Pos Row Type: {$pos_row_type}, Old Qty: {$opw_qty_before}, Restore: {$old_qty}, New Qty: {$opw->qty}");
+                                    }
                                 } else {
                                     $opw = Product_Warehouse::FindProductWithoutVariant($old_row->product_id, $existing->warehouse_id)->first();
-                                    if ($opw) { $opw->qty += $old_qty; $opw->save(); }
+                                    if ($opw) { 
+                                        $opw_qty_before = (float) $opw->qty;
+                                        $opw->qty += $old_qty; 
+                                        $opw->save();
+                                        \Log::info("Sale Edit - Warehouse qty restored - Product ID: {$old_row->product_id}, Warehouse ID: {$existing->warehouse_id}, Pos Row Type: {$pos_row_type}, Old Qty: {$opw_qty_before}, Restore: {$old_qty}, New Qty: {$opw->qty}");
+                                    } else {
+                                        \Log::warning("Sale Edit - Warehouse record not found for restore - Product ID: {$old_row->product_id}, Warehouse ID: {$existing->warehouse_id}, Pos Row Type: {$pos_row_type}");
+                                    }
                                 }
                             }
+                        } else {
+                            \Log::warning("Sale Edit - Product not found for restore - Product ID: {$old_row->product_id}, Pos Row Type: " . ($old_row->pos_row_type ?? 'unknown'));
+                        }
+                    } else {
+                        if ($old_row->warehouse_store_product_id) {
+                            \Log::info("Sale Edit - Skipping restore (basement product) - Basement ID: {$old_row->warehouse_store_product_id}, Pos Row Type: " . ($old_row->pos_row_type ?? 'unknown'));
+                        } elseif (!$old_row->product_id) {
+                            \Log::info("Sale Edit - Skipping restore (no product_id) - Product Sale ID: {$old_row->id}");
+                        } elseif ($existing->sale_status != 1) {
+                            \Log::info("Sale Edit - Skipping restore (sale_status != 1) - Sale Status: {$existing->sale_status}, Product ID: {$old_row->product_id}");
                         }
                     }
                 }
@@ -1264,32 +1314,51 @@ class SaleController extends Controller
                             $quantity = $qty[$i] * $lims_sale_unit_data->operation_value;
                         elseif ($lims_sale_unit_data->operator == '/')
                             $quantity = $qty[$i] / $lims_sale_unit_data->operation_value;
+                        
+                        // Log before deducting
+                        $is_edit = !empty($data['draft']) && !empty($data['sale_id']);
+                        $pos_row_type = $product_sale['pos_row_type'] ?? 'unknown';
+                        $old_product_qty = (float) $lims_product_data->qty;
+                        \Log::info("Sale " . ($is_edit ? 'Edit' : 'Create') . " - Deducting product qty - Product ID: {$id}, Pos Row Type: {$pos_row_type}, Original Qty: {$qty[$i]}, After unit conversion: {$quantity}, Old Product Qty: {$old_product_qty}");
+                        
                         //deduct quantity
                         $lims_product_data->qty = $lims_product_data->qty - $quantity;
                         $lims_product_data->save();
+                        
+                        \Log::info("Sale " . ($is_edit ? 'Edit' : 'Create') . " - Product qty deducted - Product ID: {$id}, Pos Row Type: {$pos_row_type}, New Product Qty: {$lims_product_data->qty}");
 
                         //if($general_setting->without_stock != 'yes'){
                         //deduct product variant quantity if exist
                         if ($lims_product_data->is_variant) {
+                            $old_variant_qty = (float) $lims_product_variant_data->qty;
                             $lims_product_variant_data->qty -= $quantity;
                             $lims_product_variant_data->save();
                             $lims_product_warehouse_data = Product_Warehouse::FindProductWithVariant($id, $lims_product_variant_data->variant_id, $data['warehouse_id'])->first();
+                            \Log::info("Sale " . ($is_edit ? 'Edit' : 'Create') . " - Variant qty deducted - Product ID: {$id}, Variant ID: {$lims_product_variant_data->variant_id}, Pos Row Type: {$pos_row_type}, Old Qty: {$old_variant_qty}, Deduct: {$quantity}, New Qty: {$lims_product_variant_data->qty}");
                         } elseif ($product_batch_id[$i]) {
                             $lims_product_warehouse_data = Product_Warehouse::where([
                                 ['product_batch_id', $product_batch_id[$i]],
                                 ['warehouse_id', $data['warehouse_id']]
                             ])->first();
                             $lims_product_batch_data = ProductBatch::find($product_batch_id[$i]);
-                            //deduct product batch quantity
-                            $lims_product_batch_data->qty -= $quantity;
-                            $lims_product_batch_data->save();
+                            if ($lims_product_batch_data) {
+                                $old_batch_qty = (float) $lims_product_batch_data->qty;
+                                //deduct product batch quantity
+                                $lims_product_batch_data->qty -= $quantity;
+                                $lims_product_batch_data->save();
+                                \Log::info("Sale " . ($is_edit ? 'Edit' : 'Create') . " - Batch qty deducted - Product ID: {$id}, Batch ID: {$product_batch_id[$i]}, Pos Row Type: {$pos_row_type}, Old Qty: {$old_batch_qty}, Deduct: {$quantity}, New Qty: {$lims_product_batch_data->qty}");
+                            }
                         } else {
                             $lims_product_warehouse_data = Product_Warehouse::FindProductWithoutVariant($id, $data['warehouse_id'])->first();
                         }
                         //deduct quantity from warehouse
                         if ($lims_product_warehouse_data) {
+                            $old_warehouse_qty = (float) $lims_product_warehouse_data->qty;
                             $lims_product_warehouse_data->qty -= $quantity;
                             $lims_product_warehouse_data->save();
+                            \Log::info("Sale " . ($is_edit ? 'Edit' : 'Create') . " - Warehouse qty deducted - Product ID: {$id}, Warehouse ID: {$data['warehouse_id']}, Pos Row Type: {$pos_row_type}, Old Qty: {$old_warehouse_qty}, Deduct: {$quantity}, New Qty: {$lims_product_warehouse_data->qty}");
+                        } else {
+                            \Log::warning("Sale " . ($is_edit ? 'Edit' : 'Create') . " - Warehouse record not found for deduction - Product ID: {$id}, Warehouse ID: {$data['warehouse_id']}, Pos Row Type: {$pos_row_type}");
                         }
                         //}
                     }
