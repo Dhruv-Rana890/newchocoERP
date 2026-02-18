@@ -1712,90 +1712,57 @@
             $.get('sales/product_sale/' + sale[13], function(data) {
                 // console.log(data);
                 $(".product-sale-list tbody").remove();
-                var name_code = data[0];
-                var qty = data[1];
-                var unit_code = data[2];
-                var tax = data[3];
-                var tax_rate = data[4];
-                var discount = data[5];
-                var subtotal = data[6];
-                var batch_no = data[7];
-                var return_qty = data[8];
-                var is_delivered = data[9];
-                var toppings = data[10] ? data[10] : [];
-                var row_qty_sum = data[11] ? data[11] : [];
-                var unit_price_display = data[12] ? data[12] : [];
                 var total_qty = 0;
                 var newBody = $("<tbody>");
+                var rowIndex = 1;
 
-                $.each(name_code, function(index) {
-                    var newRow = $("<tr>");
-                    var cols = '';
-                    cols += '<td>' + (index + 1) + '</td>';
-                    cols += '<td>' + name_code[index];
-
-                    if (toppings[index]) {
-                        try {
-                            var toppingData = JSON.parse(toppings[index]);
-                            var toppingNames = toppingData.map(topping => topping.name).join(', ');
-                            cols += ' (' + toppingNames + ')';
-                        } catch (error) {
-                            console.error('Error parsing toppings for index', index, toppings[index],
-                            error);
-                        }
-                    }
-
-                    cols += '</td>';
-                    cols += '<td>' + batch_no[index] + '</td>';
-                    cols += '<td>' + (String(qty[index]).indexOf('<br>') !== -1 ? qty[index] : (qty[index] + (unit_code[index] ? ' ' + unit_code[index] : ''))) + '</td>';
-                    cols += '<td>' + return_qty[index] + '</td>';
-
-                    var unitPriceCell;
-                    if (unit_price_display[index]) {
-                        unitPriceCell = unit_price_display[index];
-                    } else {
-                        unitPriceCell = parseFloat(subtotal[index] / qty[index]).toFixed(
-                            {{ $general_setting->decimal }});
-                    }
-                    var toppingPrices = '';
-                    if (toppings[index]) {
-                        try {
-                            var toppingData = JSON.parse(toppings[index]);
-                            toppingPrices = toppingData
-                                .map(topping => parseFloat(topping.price).toFixed(
-                                    {{ $general_setting->decimal }})).join(' + ');
-                        } catch (error) {
-                            console.error('Error calculating topping prices for index', index, toppings[
-                                index], error);
-                        }
-                    }
-                    cols += '<td>' + unitPriceCell + (toppingPrices ? ' (' + toppingPrices + ')' : '') + '</td>';
-
-                    cols += '<td>' + (String(tax[index]).indexOf('%)') !== -1 ? tax[index] : (tax[index] + '(' + tax_rate[index] + '%)')) + '</td>';
-                    cols += '<td>' + discount[index] + '</td>';
-
-                    var toppingPricesRowTotal = 0;
-                    if (toppings[index]) {
-                        try {
-                            var toppingData = JSON.parse(toppings[index]);
-                            toppingPricesRowTotal = toppingData.reduce((sum, topping) => sum + parseFloat(
-                                topping.price), 0);
-                        } catch (error) {
-                            console.error('Error calculating topping prices for index', index, toppings[
-                                index], error);
-                        }
-                    }
-                    var subtotalVal = String(subtotal[index]).indexOf('<br>') !== -1
-                        ? subtotal[index]
-                        : (parseFloat(subtotal[index]) + toppingPricesRowTotal).toFixed({{ $general_setting->decimal }});
-
-                    cols += '<td>' + subtotalVal + '</td>';
-                    cols += '<td>' + is_delivered[index] + '</td>';
-
-                    total_qty += (row_qty_sum[index] !== undefined) ? parseFloat(row_qty_sum[index]) : parseFloat(qty[index]);
-                    newRow.append(cols);
-                    newBody.append(newRow);
-                });
+                if (data.groups) {
+                    total_qty = (data.total_qty !== undefined && data.total_qty !== null) ? data.total_qty : 0;
+                    $.each(data.groups, function(gIdx, group) {
+                        $.each(group.rows, function(rIdx, r) {
+                            var newRow = $("<tr>");
+                            var cols = '';
+                            if (rIdx === 0) {
+                                cols += '<td rowspan="' + group.rowspan + '" class="align-middle" style="vertical-align:middle !important;">' + rowIndex + '</td>';
+                            }
+                            var productCell = r.name_code;
+                            if (r.topping_id) {
+                                try {
+                                    var toppingData = JSON.parse(r.topping_id);
+                                    var toppingNames = toppingData.map(function(t) { return t.name; }).join(', ');
+                                    productCell += ' (' + toppingNames + ')';
+                                } catch (e) {}
+                            }
+                            cols += '<td>' + productCell + '</td>';
+                            cols += '<td>' + r.batch_no + '</td>';
+                            cols += '<td>' + r.qty + '</td>';
+                            cols += '<td>' + r.return_qty + '</td>';
+                            var unitPriceCell = r.unit_price;
+                            if (r.topping_id) {
+                                try {
+                                    var toppingData = JSON.parse(r.topping_id);
+                                    var toppingPrices = toppingData.map(function(t) { return parseFloat(t.price).toFixed({{ $general_setting->decimal }}); }).join(' + ');
+                                    unitPriceCell += ' (' + toppingPrices + ')';
+                                } catch (e) {}
+                            }
+                            cols += '<td>' + unitPriceCell + '</td>';
+                            cols += '<td>' + r.tax + '</td>';
+                            cols += '<td>' + r.discount + '</td>';
+                            var subtotalVal = parseFloat(r.subtotal);
+                            if (r.topping_id) {
+                                try {
+                                    var toppingData = JSON.parse(r.topping_id);
+                                    toppingData.forEach(function(t) { subtotalVal += parseFloat(t.price || 0); });
+                                } catch (e) {}
+                            }
+                            cols += '<td>' + subtotalVal.toFixed({{ $general_setting->decimal }}) + '</td>';
+                            cols += '<td>' + r.is_delivered + '</td>';
+                            newRow.append(cols);
+                            newBody.append(newRow);
+                        });
+                        rowIndex++;
+                    });
+                }
 
                 var newRow = $("<tr>");
                 cols = '';
