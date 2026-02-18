@@ -1758,19 +1758,8 @@
                         }
                     }
                     
-                    // Build product name with child products
+                    // Build product name (without child products - they will be in separate rows)
                     var product_name_html = name_code[index];
-                    
-                    // Append child products as a, b, c... z
-                    if (children.length > 0) {
-                        var child_list = [];
-                        var letter = 'a';
-                        children.forEach(function(child) {
-                            child_list.push(letter + '. ' + child.name);
-                            letter = String.fromCharCode(letter.charCodeAt(0) + 1);
-                        });
-                        product_name_html += '<br><span style="padding-left: 20px;">' + child_list.join('<br>') + '</span>';
-                    }
 
                     // Append topping names if toppings[index] exists
                     if (toppings[index]) {
