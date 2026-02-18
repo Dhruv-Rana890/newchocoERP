@@ -1724,47 +1724,47 @@
                 var is_delivered = data[9];
                 // Check if data[10] exists
                 var toppings = data[10] ? data[10] : [];
-                var is_parent = data[11] ? data[11] : [];
+                var child_products_data = data[11] ? data[11] : [];
                 var total_qty = 0;
                 var newBody = $("<tbody>");
                 var row_number = 0;
 
-                // Get all keys and sort them properly (parent first, then children)
+                // Get all numeric keys (parent products only)
                 var all_keys = Object.keys(name_code);
-                var sorted_keys = [];
-                var processed_keys = {};
-                
-                // Sort numeric keys first, then process children
                 var numeric_keys = all_keys.filter(function(k) {
                     return !k.includes('_child_') && !isNaN(parseInt(k));
                 }).sort(function(a, b) {
                     return parseInt(a) - parseInt(b);
                 });
-                
-                // Process each parent key and its children
-                numeric_keys.forEach(function(key) {
-                    if (!processed_keys[key]) {
-                        sorted_keys.push(key);
-                        processed_keys[key] = true;
-                        
-                        // Add children of this parent
-                        var child_index = 0;
-                        var child_key = key + '_child_' + child_index;
-                        while (name_code[child_key] !== undefined) {
-                            sorted_keys.push(child_key);
-                            processed_keys[child_key] = true;
-                            child_index++;
-                            child_key = key + '_child_' + child_index;
-                        }
-                    }
-                });
 
-                $.each(sorted_keys, function(idx, index) {
+                $.each(numeric_keys, function(idx, index) {
+                    row_number++;
                     var newRow = $("<tr>");
                     var cols = '';
-                    row_number++;
-                    cols += '<td>' + row_number + '</td>';
-                    cols += '<td>' + name_code[index];
+                    
+                    // Parse child products data if exists
+                    var children = [];
+                    if (child_products_data[index]) {
+                        try {
+                            children = JSON.parse(child_products_data[index]);
+                        } catch (e) {
+                            console.error('Error parsing child products:', e);
+                        }
+                    }
+                    
+                    // Build product name with child products
+                    var product_name_html = name_code[index];
+                    
+                    // Append child products as a, b, c... z
+                    if (children.length > 0) {
+                        var child_list = [];
+                        var letter = 'a';
+                        children.forEach(function(child) {
+                            child_list.push(letter + '. ' + child.name);
+                            letter = String.fromCharCode(letter.charCodeAt(0) + 1);
+                        });
+                        product_name_html += '<br><span style="padding-left: 20px;">' + child_list.join('<br>') + '</span>';
+                    }
 
                     // Append topping names if toppings[index] exists
                     if (toppings[index]) {
@@ -1772,14 +1772,15 @@
                             // Parse and extract topping names
                             var toppingData = JSON.parse(toppings[index]);
                             var toppingNames = toppingData.map(topping => topping.name).join(', ');
-                            cols += ' (' + toppingNames + ')';
+                            product_name_html += ' (' + toppingNames + ')';
                         } catch (error) {
                             console.error('Error parsing toppings for index', index, toppings[index],
                             error);
                         }
                     }
 
-                    cols += '</td>';
+                    cols += '<td>' + row_number + '</td>';
+                    cols += '<td>' + product_name_html + '</td>';
                     cols += '<td>' + (batch_no[index] || 'N/A') + '</td>';
                     cols += '<td>' + (qty[index] || 0) + ' ' + (unit_code[index] || '') + '</td>';
                     cols += '<td>' + (return_qty[index] || 0) + '</td>';
@@ -1835,6 +1836,39 @@
                     total_qty += qty_val;
                     newRow.append(cols);
                     newBody.append(newRow);
+                    
+                    // Add rows for child products with their qty, price, and subtotal
+                    if (children.length > 0) {
+                        var letter = 'a';
+                        children.forEach(function(child) {
+                            var childRow = $("<tr>");
+                            var childCols = '';
+                            
+                            childCols += '<td></td>'; // Empty row number
+                            childCols += '<td style="padding-left: 30px;"><strong>' + letter + '.</strong> ' + child.name + '</td>';
+                            childCols += '<td>' + (child.batch_no || 'N/A') + '</td>';
+                            childCols += '<td>' + (child.qty || 0) + ' ' + (child.unit || '') + '</td>';
+                            childCols += '<td>' + (child.return_qty || 0) + '</td>';
+                            
+                            // Calculate child unit price
+                            var child_qty = parseFloat(child.qty || 0);
+                            var child_subtotal = parseFloat(child.subtotal || 0);
+                            var child_unit_price = child_qty > 0 ? parseFloat(child_subtotal / child_qty).toFixed(
+                                {{ $general_setting->decimal }}) : '0.00';
+                            
+                            childCols += '<td>' + child_unit_price + '</td>';
+                            childCols += '<td>' + (child.tax || 0) + '(' + (child.tax_rate || 0) + '%)' + '</td>';
+                            childCols += '<td>' + (child.discount || 0) + '</td>';
+                            childCols += '<td>' + parseFloat(child_subtotal).toFixed({{ $general_setting->decimal }}) + '</td>';
+                            childCols += '<td>' + (child.is_delivered || 'No') + '</td>';
+                            
+                            total_qty += child_qty;
+                            childRow.append(childCols);
+                            newBody.append(childRow);
+                            
+                            letter = String.fromCharCode(letter.charCodeAt(0) + 1);
+                        });
+                    }
                 });
 
                 var newRow = $("<tr>");

@@ -3405,8 +3405,41 @@ class SaleController extends Controller
             } else {
                 $product_sale[7][$key] = 'N/A';
             }
+            // Build child products HTML if this is a parent product
+            $child_products_html = '';
+            $child_products_data = [];
+            if (($product_sale_data->pos_row_type ?? null) === 'parent') {
+                $children = $all_product_sales->where('custom_parent_id', $product_sale_data->id)->sortBy('custom_sort');
+                $letter = 'a';
+                foreach ($children as $child) {
+                    $child_item = $this->getProductOrBasementForSaleItem($child);
+                    $child_name = $child_item->name;
+                    $child_name_with_code = $child_name . ' [' . ($child_item->code ?? '') . ']';
+                    
+                    $child_unit_data = Unit::find($child->sale_unit_id);
+                    $child_unit = $child_unit_data ? $child_unit_data->unit_code : '';
+                    
+                    // Store child product data for JavaScript
+                    $child_products_data[] = [
+                        'name' => $child_name_with_code,
+                        'qty' => $child->qty,
+                        'unit' => $child_unit,
+                        'price' => $child->net_unit_price,
+                        'subtotal' => $child->total,
+                        'tax' => $child->tax,
+                        'tax_rate' => $child->tax_rate,
+                        'discount' => $child->discount,
+                        'return_qty' => $child->return_qty,
+                        'is_delivered' => $child->is_delivered ? __('db.Yes') : __('db.No'),
+                        'batch_no' => $child->product_batch_id ? (ProductBatch::find($child->product_batch_id)->batch_no ?? 'N/A') : 'N/A',
+                    ];
+                    
+                    $letter++;
+                }
+            }
+            
             $product_sale[0][$key] = nl2br(e($name_with_code));
-            $product_sale[11][$key] = ($product_sale_data->pos_row_type ?? null) === 'parent' ? 1 : 0; // Flag for parent
+            $product_sale[11][$key] = json_encode($child_products_data); // Store child products data as JSON
             
             $returned_imei_number_data = '';
             if (!$product_sale_data->warehouse_store_product_id && $product_sale_data->imei_number && !str_contains($product_sale_data->imei_number, "null")) {
@@ -3444,45 +3477,6 @@ class SaleController extends Controller
             }
             if (in_array('restaurant', explode(',', $general_setting->modules))) {
                 $product_sale[10][$key] = $product_sale_data->topping_id;
-            }
-            
-            // Add child products data if this is a parent product
-            if (($product_sale_data->pos_row_type ?? null) === 'parent') {
-                $children = $all_product_sales->where('custom_parent_id', $product_sale_data->id)->sortBy('custom_sort');
-                $child_index = 0;
-                foreach ($children as $child) {
-                    $child_key = $key . '_child_' . $child_index;
-                    $child_item = $this->getProductOrBasementForSaleItem($child);
-                    $child_name = $child_item->name;
-                    $child_name_with_code = $child_name . ' [' . ($child_item->code ?? '') . ']';
-                    
-                    $child_unit_data = Unit::find($child->sale_unit_id);
-                    $child_unit = $child_unit_data ? $child_unit_data->unit_code : '';
-                    
-                    if ($child->product_batch_id) {
-                        $child_batch_data = ProductBatch::select('batch_no')->find($child->product_batch_id);
-                        $product_sale[7][$child_key] = $child_batch_data->batch_no;
-                    } else {
-                        $product_sale[7][$child_key] = 'N/A';
-                    }
-                    
-                    $product_sale[0][$child_key] = '&nbsp;&nbsp;&nbsp;&nbsp;' . nl2br(e($child_name_with_code)); // Indent child products
-                    $product_sale[11][$child_key] = 0; // Not a parent
-                    $product_sale[1][$child_key] = $child->qty;
-                    $product_sale[2][$child_key] = $child_unit;
-                    $product_sale[3][$child_key] = $child->tax;
-                    $product_sale[4][$child_key] = $child->tax_rate;
-                    $product_sale[5][$child_key] = $child->discount;
-                    $product_sale[6][$child_key] = $child->total;
-                    $product_sale[8][$child_key] = $child->return_qty;
-                    $product_sale[9][$child_key] = $child->is_delivered ? __('db.Yes') : __('db.No');
-                    
-                    if (in_array('restaurant', explode(',', $general_setting->modules))) {
-                        $product_sale[10][$child_key] = $child->topping_id;
-                    }
-                    
-                    $child_index++;
-                }
             }
         }
         return $product_sale;
