@@ -437,15 +437,18 @@ class SaleController extends Controller
                 $nestedData['warehouse_name'] = $warehouse->name;
                 $nestedData['currency'] = $currency;
 
-                // Products details logic
+                // Products details - group parent+children in one row (same as sale-details modal)
                 $productNames = [];
                 $productQtys = [];
-                $total_products = $sale->products->count();
-                foreach ($sale->products as $key_prod => $product) {
-                    $product_sale = Product_Sale::where(['product_id' => $product->id, 'sale_id' => $sale->id])->first();
+                $product_sales = Product_Sale::where('sale_id', $sale->id)->orderBy('pos_sort_order')->orderBy('id')->get();
+                $rows = $this->buildProductSaleDisplayRows($product_sales);
+                $total_products = count($rows);
+                foreach ($rows as $key_prod => $row) {
+                    $ps = $row['product_sale'];
+                    $name = str_replace("\n", '<br>', e($row['display_name']));
                     $html_tag_start = ($key_prod + 1 < $total_products) ? '<div style="border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 4px;">' : '<div style="padding-bottom: 4px; margin-bottom: 4px;">';
-                    $productNames[] = $html_tag_start . e($product->name) . '</div>';
-                    $productQtys[] = '<div style="padding-bottom: 4px; margin-bottom: 4px;">' . '<span class="badge badge-primary">' . e($product_sale->qty) . '</span></div>';
+                    $productNames[] = $html_tag_start . $name . '</div>';
+                    $productQtys[] = '<div style="padding-bottom: 4px; margin-bottom: 4px;">' . '<span class="badge badge-primary">' . e($ps->qty) . '</span></div>';
                 }
                 $nestedData['products'] = implode('', $productNames);
                 $nestedData['qty'] = implode('', $productQtys);
@@ -2599,9 +2602,18 @@ class SaleController extends Controller
 
     /**
      * For a product_sale row, return Product or Basement (warehouse-store) for name/code/type.
+     * Matches POS store logic: child always deducts from products table → show Product; parent/display from basement → show Basement.
      */
     private function getProductOrBasementForSaleItem($product_sale_data)
     {
+        // Child products: same as store - deduct from products table, so show Product name
+        if (($product_sale_data->pos_row_type ?? null) === 'child' && $product_sale_data->product_id) {
+            $p = Product::find($product_sale_data->product_id);
+            if ($p) {
+                return (object) ['id' => $p->id, 'name' => $p->name, 'code' => $p->code, 'type' => $p->type ?? 'standard', 'file' => $p->file ?? null];
+            }
+        }
+        // Parent/display from basement: same as store - deduct from basement, so show Basement name
         if ($product_sale_data->warehouse_store_product_id ?? null) {
             $b = Basement::find($product_sale_data->warehouse_store_product_id);
             if (!$b) {
@@ -2609,11 +2621,47 @@ class SaleController extends Controller
             }
             return (object) ['id' => $b->id, 'name' => $b->name, 'code' => $b->code, 'type' => 'standard', 'file' => null];
         }
+        // Regular product (display)
         $p = Product::find($product_sale_data->product_id);
         if (!$p) {
             return (object) ['id' => null, 'name' => '—', 'code' => '', 'type' => 'standard', 'file' => null];
         }
         return (object) ['id' => $p->id, 'name' => $p->name, 'code' => $p->code, 'type' => $p->type ?? 'standard', 'file' => $p->file ?? null];
+    }
+
+    /**
+     * Build display rows for index list and sale-details modal.
+     * Display products = one row each. Parent + children = one row: "Parent\na. child1,\nb. child2".
+     * Returns array of ['product_sale' => Model, 'display_name' => string, 'display_name_with_code' => string, 'item' => name/code object].
+     */
+    private function buildProductSaleDisplayRows($product_sales)
+    {
+        $product_sales = $product_sales->sortBy(['pos_sort_order', 'id'])->values();
+        $rows = [];
+        foreach ($product_sales as $ps) {
+            if (($ps->pos_row_type ?? null) === 'child') {
+                continue;
+            }
+            $item = $this->getProductOrBasementForSaleItem($ps);
+            $display_name = $item->name;
+            $display_name_with_code = $item->name . ' [' . ($item->code ?? '') . ']';
+            if (($ps->pos_row_type ?? null) === 'parent') {
+                $children = $product_sales->where('custom_parent_id', $ps->id)->sortBy('custom_sort');
+                if ($children->isNotEmpty()) {
+                    $parts = [];
+                    $letter = 'a';
+                    foreach ($children as $child) {
+                        $citem = $this->getProductOrBasementForSaleItem($child);
+                        $parts[] = $letter . '. ' . $citem->name;
+                        $letter++;
+                    }
+                    $display_name .= "\n    " . implode(",\n    ", $parts);
+                    $display_name_with_code .= "\n    " . implode(",\n    ", $parts);
+                }
+            }
+            $rows[] = ['product_sale' => $ps, 'display_name' => $display_name, 'display_name_with_code' => $display_name_with_code, 'item' => $item];
+        }
+        return $rows;
     }
 
     /**
@@ -3331,25 +3379,26 @@ class SaleController extends Controller
     public function productSaleData($id)
     {
         $lims_product_sale_data = Product_Sale::where('sale_id', $id)->get();
-        foreach ($lims_product_sale_data as $key => $product_sale_data) {
-            $product = $this->getProductOrBasementForSaleItem($product_sale_data);
+        $rows = $this->buildProductSaleDisplayRows($lims_product_sale_data);
+        $product_sale = [];
+        foreach ($rows as $key => $row) {
+            $product_sale_data = $row['product_sale'];
+            $name_with_code = $row['display_name_with_code'];
             if (!$product_sale_data->warehouse_store_product_id && $product_sale_data->variant_id) {
                 $lims_product_variant_data = ProductVariant::select('item_code')->FindExactProduct($product_sale_data->product_id, $product_sale_data->variant_id)->first();
                 if ($lims_product_variant_data) {
-                    $product->code = $lims_product_variant_data->item_code;
+                    $name_with_code = preg_replace('/ \[[^\]]*\]/', ' [' . $lims_product_variant_data->item_code . ']', $name_with_code, 1);
                 }
             }
             $unit_data = Unit::find($product_sale_data->sale_unit_id);
-            if ($unit_data) {
-                $unit = $unit_data->unit_code;
-            } else
-                $unit = '';
+            $unit = $unit_data ? $unit_data->unit_code : '';
             if ($product_sale_data->product_batch_id) {
                 $product_batch_data = ProductBatch::select('batch_no')->find($product_sale_data->product_batch_id);
                 $product_sale[7][$key] = $product_batch_data->batch_no;
-            } else
+            } else {
                 $product_sale[7][$key] = 'N/A';
-            $product_sale[0][$key] = $product->name . ' [' . $product->code . ']';
+            }
+            $product_sale[0][$key] = nl2br(e($name_with_code));
             $returned_imei_number_data = '';
             if (!$product_sale_data->warehouse_store_product_id && $product_sale_data->imei_number && !str_contains($product_sale_data->imei_number, "null")) {
                 $imeis = array_unique(explode(',', $product_sale_data->imei_number));
@@ -3373,12 +3422,10 @@ class SaleController extends Controller
                 $imeis = array_unique(explode(',', $returned_imei_number_data->imei_number));
                 $imeis = implode(',', $imeis);
                 $product_sale[8][$key] = $product_sale_data->return_qty . '<br><span style="white-space: normal !important;word-break: break-word !important;overflow-wrap: anywhere !important;max-width: 100%;display: block;">IMEI or Serial Number: ' . $imeis . '</span>';
-            } else
+            } else {
                 $product_sale[8][$key] = $product_sale_data->return_qty;
-            if ($product_sale_data->is_delivered)
-                $product_sale[9][$key] = __('db.Yes');
-            else
-                $product_sale[9][$key] = __('db.No');
+            }
+            $product_sale[9][$key] = $product_sale_data->is_delivered ? __('db.Yes') : __('db.No');
 
             if (cache()->has('general_setting')) {
                 $general_setting = cache()->get('general_setting');
