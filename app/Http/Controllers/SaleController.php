@@ -437,18 +437,15 @@ class SaleController extends Controller
                 $nestedData['warehouse_name'] = $warehouse->name;
                 $nestedData['currency'] = $currency;
 
-                // Products details - group parent+children in one row (same as sale-details modal)
+                // Products details logic
                 $productNames = [];
                 $productQtys = [];
-                $product_sales = Product_Sale::where('sale_id', $sale->id)->orderBy('pos_sort_order')->orderBy('id')->get();
-                $rows = $this->buildProductSaleDisplayRows($product_sales);
-                $total_products = count($rows);
-                foreach ($rows as $key_prod => $row) {
-                    $ps = $row['product_sale'];
-                    $name = str_replace("\n", '<br>', e($row['display_name']));
+                $total_products = $sale->products->count();
+                foreach ($sale->products as $key_prod => $product) {
+                    $product_sale = Product_Sale::where(['product_id' => $product->id, 'sale_id' => $sale->id])->first();
                     $html_tag_start = ($key_prod + 1 < $total_products) ? '<div style="border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 4px;">' : '<div style="padding-bottom: 4px; margin-bottom: 4px;">';
-                    $productNames[] = $html_tag_start . $name . '</div>';
-                    $productQtys[] = '<div style="padding-bottom: 4px; margin-bottom: 4px;">' . '<span class="badge badge-primary">' . e($ps->qty) . '</span></div>';
+                    $productNames[] = $html_tag_start . e($product->name) . '</div>';
+                    $productQtys[] = '<div style="padding-bottom: 4px; margin-bottom: 4px;">' . '<span class="badge badge-primary">' . e($product_sale->qty) . '</span></div>';
                 }
                 $nestedData['products'] = implode('', $productNames);
                 $nestedData['qty'] = implode('', $productQtys);
@@ -2602,18 +2599,9 @@ class SaleController extends Controller
 
     /**
      * For a product_sale row, return Product or Basement (warehouse-store) for name/code/type.
-     * Matches POS store logic: child always deducts from products table → show Product; parent/display from basement → show Basement.
      */
     private function getProductOrBasementForSaleItem($product_sale_data)
     {
-        // Child products: same as store - deduct from products table, so show Product name
-        if (($product_sale_data->pos_row_type ?? null) === 'child' && $product_sale_data->product_id) {
-            $p = Product::find($product_sale_data->product_id);
-            if ($p) {
-                return (object) ['id' => $p->id, 'name' => $p->name, 'code' => $p->code, 'type' => $p->type ?? 'standard', 'file' => $p->file ?? null];
-            }
-        }
-        // Parent/display from basement: same as store - deduct from basement, so show Basement name
         if ($product_sale_data->warehouse_store_product_id ?? null) {
             $b = Basement::find($product_sale_data->warehouse_store_product_id);
             if (!$b) {
@@ -2621,47 +2609,11 @@ class SaleController extends Controller
             }
             return (object) ['id' => $b->id, 'name' => $b->name, 'code' => $b->code, 'type' => 'standard', 'file' => null];
         }
-        // Regular product (display)
         $p = Product::find($product_sale_data->product_id);
         if (!$p) {
             return (object) ['id' => null, 'name' => '—', 'code' => '', 'type' => 'standard', 'file' => null];
         }
         return (object) ['id' => $p->id, 'name' => $p->name, 'code' => $p->code, 'type' => $p->type ?? 'standard', 'file' => $p->file ?? null];
-    }
-
-    /**
-     * Build display rows for index list and sale-details modal.
-     * Display products = one row each. Parent + children = one row: "Parent\na. child1,\nb. child2".
-     * Returns array of ['product_sale' => Model, 'display_name' => string, 'display_name_with_code' => string, 'item' => name/code object].
-     */
-    private function buildProductSaleDisplayRows($product_sales)
-    {
-        $product_sales = $product_sales->sortBy(['pos_sort_order', 'id'])->values();
-        $rows = [];
-        foreach ($product_sales as $ps) {
-            if (($ps->pos_row_type ?? null) === 'child') {
-                continue;
-            }
-            $item = $this->getProductOrBasementForSaleItem($ps);
-            $display_name = $item->name;
-            $display_name_with_code = $item->name . ' [' . ($item->code ?? '') . ']';
-            if (($ps->pos_row_type ?? null) === 'parent') {
-                $children = $product_sales->where('custom_parent_id', $ps->id)->sortBy('custom_sort');
-                if ($children->isNotEmpty()) {
-                    $parts = [];
-                    $letter = 'a';
-                    foreach ($children as $child) {
-                        $citem = $this->getProductOrBasementForSaleItem($child);
-                        $parts[] = $letter . '. ' . $citem->name;
-                        $letter++;
-                    }
-                    $display_name .= "\n    " . implode(",\n    ", $parts);
-                    $display_name_with_code .= "\n    " . implode(",\n    ", $parts);
-                }
-            }
-            $rows[] = ['product_sale' => $ps, 'display_name' => $display_name, 'display_name_with_code' => $display_name_with_code, 'item' => $item];
-        }
-        return $rows;
     }
 
     /**
@@ -3379,71 +3331,25 @@ class SaleController extends Controller
     public function productSaleData($id)
     {
         $lims_product_sale_data = Product_Sale::where('sale_id', $id)->get();
-        $rows = $this->buildProductSaleDisplayRows($lims_product_sale_data);
-        $product_sale = [];
-        $decimal = (int) (config('decimal') ?? 2);
-
-        if (cache()->has('general_setting')) {
-            $general_setting = cache()->get('general_setting');
-        } else {
-            $general_setting = DB::table('general_settings')->select('modules')->first();
-            cache()->put('general_setting', $general_setting, 60 * 60 * 24);
-        }
-
-        foreach ($rows as $key => $row) {
-            $product_sale_data = $row['product_sale'];
-            $children = $row['children'];
-            $name_with_code = $row['display_name_with_code'];
+        foreach ($lims_product_sale_data as $key => $product_sale_data) {
+            $product = $this->getProductOrBasementForSaleItem($product_sale_data);
             if (!$product_sale_data->warehouse_store_product_id && $product_sale_data->variant_id) {
                 $lims_product_variant_data = ProductVariant::select('item_code')->FindExactProduct($product_sale_data->product_id, $product_sale_data->variant_id)->first();
                 if ($lims_product_variant_data) {
-                    $name_with_code = preg_replace('/ \[[^\]]*\]/', ' [' . $lims_product_variant_data->item_code . ']', $name_with_code, 1);
+                    $product->code = $lims_product_variant_data->item_code;
                 }
             }
             $unit_data = Unit::find($product_sale_data->sale_unit_id);
-            $unit = $unit_data ? $unit_data->unit_code : '';
-
-            $fmt = function ($val, $dec = null) use ($decimal) { return number_format((float) $val, $dec ?? $decimal, '.', ''); };
-            $rowQtySum = (float) $product_sale_data->qty;
-
-            $batch_val = $product_sale_data->product_batch_id
-                ? (ProductBatch::select('batch_no')->find($product_sale_data->product_batch_id)->batch_no ?? 'N/A')
-                : 'N/A';
-            $qty_val = $children->isNotEmpty() ? ((string) $product_sale_data->qty . ($unit ? ' ' . $unit : '')) : (string) $product_sale_data->qty;
-            $returned_val = (string) $product_sale_data->return_qty;
-            $unit_price_val = $product_sale_data->qty ? $fmt($product_sale_data->total / $product_sale_data->qty) : '0';
-            $tax_val = $fmt($product_sale_data->tax) . '(' . $product_sale_data->tax_rate . '%)';
-            $discount_val = $fmt($product_sale_data->discount);
-            $subtotal_val = $fmt($product_sale_data->total);
-            $delivered_val = $product_sale_data->is_delivered ? __('db.Yes') : __('db.No');
-
-            $letter = 'a';
-            foreach ($children as $child) {
-                $c_unit = '';
-                $c_batch = 'N/A';
-                if ($child->product_batch_id) {
-                    $pb = ProductBatch::select('batch_no')->find($child->product_batch_id);
-                    $c_batch = $pb ? $pb->batch_no : 'N/A';
-                }
-                if ($child->sale_unit_id) {
-                    $ud = Unit::find($child->sale_unit_id);
-                    $c_unit = $ud ? $ud->unit_code : '';
-                }
-                $rowQtySum += (float) $child->qty;
-                $c_unit_price = $child->qty ? $fmt($child->total / $child->qty) : '0';
-                $batch_val .= '<br>    ' . $letter . '. ' . $c_batch;
-                $qty_val .= '<br>    ' . $letter . '. ' . $child->qty . ($c_unit ? ' ' . $c_unit : '');
-                $returned_val .= '<br>    ' . $letter . '. ' . $child->return_qty;
-                $unit_price_val .= '<br>    ' . $letter . '. ' . $c_unit_price;
-                $tax_val .= '<br>    ' . $letter . '. ' . $fmt($child->tax) . '(' . $child->tax_rate . '%)';
-                $discount_val .= '<br>    ' . $letter . '. ' . $fmt($child->discount);
-                $subtotal_val .= '<br>    ' . $letter . '. ' . $fmt($child->total);
-                $delivered_val .= '<br>    ' . $letter . '. ' . ($child->is_delivered ? __('db.Yes') : __('db.No'));
-                $letter++;
-            }
-
-            $product_sale[7][$key] = $batch_val;
-            $product_sale[0][$key] = nl2br(e($name_with_code));
+            if ($unit_data) {
+                $unit = $unit_data->unit_code;
+            } else
+                $unit = '';
+            if ($product_sale_data->product_batch_id) {
+                $product_batch_data = ProductBatch::select('batch_no')->find($product_sale_data->product_batch_id);
+                $product_sale[7][$key] = $product_batch_data->batch_no;
+            } else
+                $product_sale[7][$key] = 'N/A';
+            $product_sale[0][$key] = $product->name . ' [' . $product->code . ']';
             $returned_imei_number_data = '';
             if (!$product_sale_data->warehouse_store_product_id && $product_sale_data->imei_number && !str_contains($product_sale_data->imei_number, "null")) {
                 $imeis = array_unique(explode(',', $product_sale_data->imei_number));
@@ -3457,23 +3363,29 @@ class SaleController extends Controller
                     ])->select('product_returns.imei_number')
                     ->first();
             }
-            $product_sale[1][$key] = $qty_val;
-            $product_sale[2][$key] = $children->isNotEmpty() ? '' : $unit;
-            $product_sale[12][$key] = $unit_price_val;
-            $product_sale[3][$key] = $tax_val;
+            $product_sale[1][$key] = $product_sale_data->qty;
+            $product_sale[2][$key] = $unit;
+            $product_sale[3][$key] = $product_sale_data->tax;
             $product_sale[4][$key] = $product_sale_data->tax_rate;
-            $product_sale[5][$key] = $discount_val;
-            $product_sale[6][$key] = $subtotal_val;
+            $product_sale[5][$key] = $product_sale_data->discount;
+            $product_sale[6][$key] = $product_sale_data->total;
             if ($returned_imei_number_data) {
                 $imeis = array_unique(explode(',', $returned_imei_number_data->imei_number));
                 $imeis = implode(',', $imeis);
                 $product_sale[8][$key] = $product_sale_data->return_qty . '<br><span style="white-space: normal !important;word-break: break-word !important;overflow-wrap: anywhere !important;max-width: 100%;display: block;">IMEI or Serial Number: ' . $imeis . '</span>';
-            } else {
-                $product_sale[8][$key] = $returned_val;
-            }
-            $product_sale[9][$key] = $delivered_val;
-            $product_sale[11][$key] = $rowQtySum;
+            } else
+                $product_sale[8][$key] = $product_sale_data->return_qty;
+            if ($product_sale_data->is_delivered)
+                $product_sale[9][$key] = __('db.Yes');
+            else
+                $product_sale[9][$key] = __('db.No');
 
+            if (cache()->has('general_setting')) {
+                $general_setting = cache()->get('general_setting');
+            } else {
+                $general_setting = DB::table('general_settings')->select('modules')->first();
+                cache()->put('general_setting', $general_setting, 60 * 60 * 24);
+            }
             if (in_array('restaurant', explode(',', $general_setting->modules))) {
                 $product_sale[10][$key] = $product_sale_data->topping_id;
             }
