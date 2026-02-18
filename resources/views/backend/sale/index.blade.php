@@ -1724,13 +1724,46 @@
                 var is_delivered = data[9];
                 // Check if data[10] exists
                 var toppings = data[10] ? data[10] : [];
+                var is_parent = data[11] ? data[11] : [];
                 var total_qty = 0;
                 var newBody = $("<tbody>");
+                var row_number = 0;
 
-                $.each(name_code, function(index) {
+                // Get all keys and sort them properly (parent first, then children)
+                var all_keys = Object.keys(name_code);
+                var sorted_keys = [];
+                var processed_keys = {};
+                
+                // Sort numeric keys first, then process children
+                var numeric_keys = all_keys.filter(function(k) {
+                    return !k.includes('_child_') && !isNaN(parseInt(k));
+                }).sort(function(a, b) {
+                    return parseInt(a) - parseInt(b);
+                });
+                
+                // Process each parent key and its children
+                numeric_keys.forEach(function(key) {
+                    if (!processed_keys[key]) {
+                        sorted_keys.push(key);
+                        processed_keys[key] = true;
+                        
+                        // Add children of this parent
+                        var child_index = 0;
+                        var child_key = key + '_child_' + child_index;
+                        while (name_code[child_key] !== undefined) {
+                            sorted_keys.push(child_key);
+                            processed_keys[child_key] = true;
+                            child_index++;
+                            child_key = key + '_child_' + child_index;
+                        }
+                    }
+                });
+
+                $.each(sorted_keys, function(idx, index) {
                     var newRow = $("<tr>");
                     var cols = '';
-                    cols += '<td>' + (index + 1) + '</td>';
+                    row_number++;
+                    cols += '<td>' + row_number + '</td>';
                     cols += '<td>' + name_code[index];
 
                     // Append topping names if toppings[index] exists
@@ -1747,13 +1780,15 @@
                     }
 
                     cols += '</td>';
-                    cols += '<td>' + batch_no[index] + '</td>';
-                    cols += '<td>' + qty[index] + ' ' + unit_code[index] + '</td>';
-                    cols += '<td>' + return_qty[index] + '</td>';
+                    cols += '<td>' + (batch_no[index] || 'N/A') + '</td>';
+                    cols += '<td>' + (qty[index] || 0) + ' ' + (unit_code[index] || '') + '</td>';
+                    cols += '<td>' + (return_qty[index] || 0) + '</td>';
 
                     // Calculate unit price
-                    var unitPrice = parseFloat(subtotal[index] / qty[index]).toFixed(
-                        {{ $general_setting->decimal }});
+                    var qty_val = parseFloat(qty[index] || 0);
+                    var subtotal_val = parseFloat(subtotal[index] || 0);
+                    var unitPrice = qty_val > 0 ? parseFloat(subtotal_val / qty_val).toFixed(
+                        {{ $general_setting->decimal }}) : '0.00';
 
                     // Calculate topping prices if toppings[index] exists
                     var toppingPrices = '';
@@ -1771,10 +1806,14 @@
                         }
                     }
 
-                    cols += '<td>' + unitPrice + ' (' + toppingPrices + ')</td>';
+                    if (toppingPrices) {
+                        cols += '<td>' + unitPrice + ' (' + toppingPrices + ')</td>';
+                    } else {
+                        cols += '<td>' + unitPrice + '</td>';
+                    }
 
-                    cols += '<td>' + tax[index] + '(' + tax_rate[index] + '%)' + '</td>';
-                    cols += '<td>' + discount[index] + '</td>';
+                    cols += '<td>' + (tax[index] || 0) + '(' + (tax_rate[index] || 0) + '%)' + '</td>';
+                    cols += '<td>' + (discount[index] || 0) + '</td>';
 
                     // Update subtotal to include topping prices
                     var toppingPricesRowTotal = 0;
@@ -1788,12 +1827,12 @@
                                 index], error);
                         }
                     }
-                    subtotal[index] = parseFloat(subtotal[index]) + toppingPricesRowTotal;
+                    var final_subtotal = parseFloat(subtotal_val) + toppingPricesRowTotal;
 
-                    cols += '<td>' + subtotal[index].toFixed({{ $general_setting->decimal }}) + '</td>';
-                    cols += '<td>' + is_delivered[index] + '</td>';
+                    cols += '<td>' + final_subtotal.toFixed({{ $general_setting->decimal }}) + '</td>';
+                    cols += '<td>' + (is_delivered[index] || 'No') + '</td>';
 
-                    total_qty += parseFloat(qty[index]);
+                    total_qty += qty_val;
                     newRow.append(cols);
                     newBody.append(newRow);
                 });
