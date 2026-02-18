@@ -1744,11 +1744,17 @@
                     
                     // Parse child products data if exists
                     var children = [];
-                    if (child_products_data[index]) {
-                        try {
-                            children = JSON.parse(child_products_data[index]);
-                        } catch (e) {
-                            console.error('Error parsing child products:', e);
+                    if (child_products_data && child_products_data[index]) {
+                        var childData = child_products_data[index];
+                        // If it's already an array, use it directly; otherwise try to parse as JSON string
+                        if (Array.isArray(childData)) {
+                            children = childData;
+                        } else if (typeof childData === 'string' && childData.trim() !== '') {
+                            try {
+                                children = JSON.parse(childData);
+                            } catch (e) {
+                                console.error('Error parsing child products JSON for index ' + index + ':', e, childData);
+                            }
                         }
                     }
                     
@@ -1838,14 +1844,14 @@
                     newBody.append(newRow);
                     
                     // Add rows for child products with their qty, price, and subtotal
-                    if (children.length > 0) {
+                    if (children && children.length > 0) {
                         var letter = 'a';
                         children.forEach(function(child) {
                             var childRow = $("<tr>");
                             var childCols = '';
                             
                             childCols += '<td></td>'; // Empty row number
-                            childCols += '<td style="padding-left: 30px;"><strong>' + letter + '.</strong> ' + child.name + '</td>';
+                            childCols += '<td style="padding-left: 30px;"><strong>' + letter + '.</strong> ' + (child.name || '') + '</td>';
                             childCols += '<td>' + (child.batch_no || 'N/A') + '</td>';
                             childCols += '<td>' + (child.qty || 0) + ' ' + (child.unit || '') + '</td>';
                             childCols += '<td>' + (child.return_qty || 0) + '</td>';

@@ -3439,7 +3439,8 @@ class SaleController extends Controller
             }
             
             $product_sale[0][$key] = nl2br(e($name_with_code));
-            $product_sale[11][$key] = json_encode($child_products_data); // Store child products data as JSON
+            // Store child products data as array (Laravel will JSON encode the whole response)
+            $product_sale[11][$key] = $child_products_data;
             
             $returned_imei_number_data = '';
             if (!$product_sale_data->warehouse_store_product_id && $product_sale_data->imei_number && !str_contains($product_sale_data->imei_number, "null")) {
