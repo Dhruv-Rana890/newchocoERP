@@ -3378,32 +3378,41 @@ class SaleController extends Controller
 
     public function productSaleData($id)
     {
-        $lims_product_sale_data = Product_Sale::where('sale_id', $id)->get();
-        $rows = $this->buildProductSaleDisplayRows($lims_product_sale_data);
+        $lims_product_sale_data = Product_Sale::where('sale_id', $id)->orderBy('pos_sort_order')->orderBy('id')->get();
         $product_sale = [];
-        foreach ($rows as $key => $row) {
-            $product_sale_data = $row['product_sale'];
-            $name_with_code = $row['display_name_with_code'];
+        $key = 0;
+        foreach ($lims_product_sale_data as $product_sale_data) {
+            $item = $this->getProductOrBasementForSaleItem($product_sale_data);
+            $code = $item->code ?? '';
             if (!$product_sale_data->warehouse_store_product_id && $product_sale_data->variant_id) {
                 $lims_product_variant_data = ProductVariant::select('item_code')->FindExactProduct($product_sale_data->product_id, $product_sale_data->variant_id)->first();
                 if ($lims_product_variant_data) {
-                    $name_with_code = preg_replace('/ \[[^\]]*\]/', ' [' . $lims_product_variant_data->item_code . ']', $name_with_code, 1);
+                    $code = $lims_product_variant_data->item_code;
                 }
+            }
+            $name_with_code = $item->name . ' [' . $code . ']';
+            if (($product_sale_data->pos_row_type ?? null) === 'child' && $product_sale_data->custom_parent_id) {
+                $siblings = $lims_product_sale_data->where('custom_parent_id', $product_sale_data->custom_parent_id)->sortBy('custom_sort')->values();
+                $idx = $siblings->search(fn ($s) => $s->id === $product_sale_data->id);
+                $idx = ($idx !== false) ? min((int) $idx, 25) : 0;
+                $letter = chr(97 + $idx);
+                $name_with_code = $letter . '. ' . $name_with_code;
             }
             $unit_data = Unit::find($product_sale_data->sale_unit_id);
             $unit = $unit_data ? $unit_data->unit_code : '';
+            $product_sale[7][$key] = 'N/A';
             if ($product_sale_data->product_batch_id) {
-                $product_batch_data = ProductBatch::select('batch_no')->find($product_sale_data->product_batch_id);
-                $product_sale[7][$key] = $product_batch_data->batch_no;
-            } else {
-                $product_sale[7][$key] = 'N/A';
+                $product_batch_data = ProductBatch::find($product_sale_data->product_batch_id);
+                if ($product_batch_data && isset($product_batch_data->batch_no)) {
+                    $product_sale[7][$key] = $product_batch_data->batch_no;
+                }
             }
             $product_sale[0][$key] = nl2br(e($name_with_code));
             $returned_imei_number_data = '';
             if (!$product_sale_data->warehouse_store_product_id && $product_sale_data->imei_number && !str_contains($product_sale_data->imei_number, "null")) {
                 $imeis = array_unique(explode(',', $product_sale_data->imei_number));
                 $imeis = implode(',', $imeis);
-                $product_sale[0][$key] .= '<br><span style="white-space: normal !important;word-break: break-word !important;overflow-wrap: anywhere !important;max-width: 100%;display: block;">IMEI or Serial Number: ' . $imeis . '</span>';
+                $product_sale[0][$key] .= '<br><span style="white-space: normal !important;word-break: break-word !important;overflow-wrap: anywhere !important;max-width: 100%;display: block;">IMEI or Serial Number: ' . e($imeis) . '</span>';
                 $returned_imei_number_data = DB::table('returns')
                     ->join('product_returns', 'returns.id', '=', 'product_returns.return_id')
                     ->where([
@@ -3421,7 +3430,7 @@ class SaleController extends Controller
             if ($returned_imei_number_data) {
                 $imeis = array_unique(explode(',', $returned_imei_number_data->imei_number));
                 $imeis = implode(',', $imeis);
-                $product_sale[8][$key] = $product_sale_data->return_qty . '<br><span style="white-space: normal !important;word-break: break-word !important;overflow-wrap: anywhere !important;max-width: 100%;display: block;">IMEI or Serial Number: ' . $imeis . '</span>';
+                $product_sale[8][$key] = $product_sale_data->return_qty . '<br><span style="white-space: normal !important;word-break: break-word !important;overflow-wrap: anywhere !important;max-width: 100%;display: block;">IMEI or Serial Number: ' . e($imeis) . '</span>';
             } else {
                 $product_sale[8][$key] = $product_sale_data->return_qty;
             }
@@ -3434,8 +3443,9 @@ class SaleController extends Controller
                 cache()->put('general_setting', $general_setting, 60 * 60 * 24);
             }
             if (in_array('restaurant', explode(',', $general_setting->modules))) {
-                $product_sale[10][$key] = $product_sale_data->topping_id;
+                $product_sale[10][$key] = $product_sale_data->topping_id ?? null;
             }
+            $key++;
         }
         return $product_sale;
     }
