@@ -565,7 +565,7 @@ Route::group(['middleware' => ['common', 'auth', 'active']], function() {
             Route::post('delete/{id}', 'delete')->name('packingSlip.delete');
             Route::get('invoice/{id}', 'genInvoice')->name('packingSlip.genInvoice');
         });
-    });
+    }); 
 
     Route::controller(ChallanController::class)->group(function () {
         Route::prefix('challans')->group(function () {
