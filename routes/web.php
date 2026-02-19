@@ -555,7 +555,8 @@ Route::group(['middleware' => ['common', 'auth', 'active']], function () {
         Route::post('sales/sendsms', 'sendSMS')->name('sale.sendsms');
         Route::post('sales/whatsapp-notification', 'whatsappNotificationSend')->name('sale.wappnotification');
         Route::get('customer-sales/{customer_id}', 'customerSales')->name('sales.customer');
-    });
+    });  
+    //ff
     Route::resource('sales', SaleController::class)->except('show');
 
     Route::get('/installmentplan/{id}', [InstallmentPlanController::class, 'show'])->name('installmentplan.show');
