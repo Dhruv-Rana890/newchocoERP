@@ -35,4 +35,14 @@ class Customer extends Model
     public function points(){
         return $this->hasMany(Point::class,'customer_id');
     }
+
+    /**
+     * Get the reward tier for this customer based on current total points.
+     * Used when reward_point_setting.use_tiers is enabled.
+     */
+    public function getRewardTier(): ?\App\Models\RewardPointTier
+    {
+        $totalPoints = (int) ($this->points ?? 0);
+        return \App\Models\RewardPointTier::getTierForPoints($totalPoints);
+    }
 }
